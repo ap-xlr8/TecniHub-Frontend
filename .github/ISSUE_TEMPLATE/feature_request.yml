@@ -1,0 +1,17 @@
+name: Solicitud de funcionalidad
+description: Proponer una necesidad para revisión
+title: 'feat: '
+body:
+  - type: textarea
+    id: user-need
+    attributes:
+      label: Historia o necesidad aprobada
+      description: Las propuestas no son alcance aprobado hasta revisarse.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación propuestos
+    validations:
+      required: true

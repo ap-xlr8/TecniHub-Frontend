@@ -1,0 +1,33 @@
+name: OWASP ZAP baseline on staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: zap-staging
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    if: github.ref == 'refs/heads/developer' || startsWith(github.ref, 'refs/heads/release/')
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check staging target
+        env:
+          STAGING_URL: ${{ vars.TECNIHUB_STAGING_URL }}
+        run: |
+          case "$STAGING_URL" in
+            https://*) ;;
+            *) echo "::error::TECNIHUB_STAGING_URL must be the authorized HTTPS staging URL"; exit 1 ;;
+          esac
+      - name: Run passive ZAP baseline scan
+        uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
+        with:
+          target: ${{ vars.TECNIHUB_STAGING_URL }}
+          allow_issue_writing: false
+          fail_action: false

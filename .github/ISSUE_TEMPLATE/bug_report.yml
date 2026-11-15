@@ -1,0 +1,24 @@
+name: Reporte de defecto
+description: Reportar un problema reproducible
+title: 'bug: '
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumen
+      description: No incluyas datos privados ni credenciales.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Pasos para reproducir
+      value: "1.\n2.\n3."
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Navegador y versión
+    validations:
+      required: true

@@ -1,0 +1,16 @@
+name: Tarea técnica
+description: Registrar trabajo de ingeniería
+title: 'chore: '
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo y motivo
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia o criterio de terminado
+    validations:
+      required: true
