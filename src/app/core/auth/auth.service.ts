@@ -168,6 +168,10 @@ export class AuthService {
     fallback = 'Ocurrió un error inesperado. Intenta de nuevo.',
   ): string {
     if (error instanceof HttpErrorResponse) {
+      if (error.status === 0) {
+        return 'No fue posible conectar con el servidor. Verifica tu conexión a internet e intenta nuevamente.';
+      }
+
       const problem = error.error as ApiProblemResponse | null;
       if (problem?.errors && problem.errors.length > 0) {
         return problem.errors.join(' ');
@@ -179,6 +183,10 @@ export class AuthService {
 
       if (problem?.title) {
         return problem.title;
+      }
+
+      if (error.status >= 500) {
+        return 'Ocurrió un problema temporal en el servidor. Intenta nuevamente en unos momentos.';
       }
     }
 

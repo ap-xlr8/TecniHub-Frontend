@@ -175,5 +175,16 @@ export const routes: Routes = [
         (m) => m.SparePartDetailComponent,
       ),
   },
-  { path: '**', redirectTo: '' },
+  {
+    path: 'error-servidor',
+    title: 'Error de conexión o servidor — TECNIHUB',
+    loadComponent: () =>
+      import('./features/errors/server-error.component').then((m) => m.ServerErrorComponent),
+  },
+  {
+    path: '**',
+    title: 'Página no encontrada (404) — TECNIHUB',
+    loadComponent: () =>
+      import('./features/errors/not-found.component').then((m) => m.NotFoundComponent),
+  },
 ];

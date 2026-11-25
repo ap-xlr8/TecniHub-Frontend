@@ -1138,3 +1138,45 @@ dialog::backdrop {
   font-weight: 800;
   color: var(--th-primary);
 }
+
+/* Global error banner & dedicated error pages (404 / 500) */
+.global-error-banner {
+  background: var(--th-error-bg);
+  color: var(--th-error);
+  border-bottom: 1px solid #fca5a5;
+  padding: 0.75rem clamp(1rem, 4vw, 2rem);
+}
+
+.global-error-banner-inner {
+  inline-size: min(100%, 70rem);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.global-error-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.error-code-badge {
+  display: inline-block;
+  margin: 0 auto 0.75rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: var(--th-surface-subtle);
+  color: var(--th-primary);
+}
+
+.error-code-badge--danger {
+  background: var(--th-error-bg);
+  color: var(--th-error);
+}
