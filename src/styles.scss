@@ -704,7 +704,7 @@ a:hover {
   }
 }
 
-/* Sprint 2 — Modal dialogs (prevent-page-scroll-under-modal-dialog) */
+/* Modal dialogs (prevent-page-scroll-under-modal-dialog) */
 dialog {
   border: 1px solid var(--th-border);
   border-radius: var(--th-radius);
@@ -726,7 +726,7 @@ dialog::backdrop {
   background: rgb(15 23 42 / 0.55);
 }
 
-/* Sprint 2 — Authenticated App Shell & Navigation */
+/* Authenticated App Shell & Navigation */
 .app-nav {
   display: flex;
   flex-wrap: wrap;
@@ -1018,7 +1018,7 @@ dialog::backdrop {
   background: #0f172a;
 }
 
-/* Chat layout (HU-011) */
+/* Chat layout */
 .chat-layout {
   display: grid;
   gap: 1rem;

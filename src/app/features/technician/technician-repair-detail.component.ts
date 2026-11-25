@@ -168,7 +168,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             isAssignedToMe(item) && (item.status === 'Assigned' || item.status === 'Scheduled')
           ) {
             <div class="form-stack">
-              <h2 style="margin: 0; font-size: 1.05rem">Programar en tu itinerario (HU-010)</h2>
+              <h2 style="margin: 0; font-size: 1.05rem">Programar en tu itinerario</h2>
               <form class="toolbar-row" (ngSubmit)="scheduleRepair(item.id)">
                 <div class="field">
                   <label for="schedule-datetime">Fecha y hora de atención *</label>
@@ -207,9 +207,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
           @if (isAssignedToMe(item) && item.status === 'InProgress') {
             <form class="form-stack" (ngSubmit)="requestClosure(item.id)">
-              <h2 style="margin: 0; font-size: 1.05rem">
-                Seguimiento y solicitud de cierre (HU-014)
-              </h2>
+              <h2 style="margin: 0; font-size: 1.05rem">Seguimiento y solicitud de cierre</h2>
               <div class="field">
                 <label for="closure-notes">Resumen del trabajo realizado (opcional)</label>
                 <textarea
