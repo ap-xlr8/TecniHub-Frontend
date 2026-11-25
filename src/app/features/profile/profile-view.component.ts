@@ -17,7 +17,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               Consulta los datos privados asociados a tu cuenta en TECNIHUB.
             </p>
           </div>
-          <a routerLink="/perfil/editar" class="btn btn-primary">Editar perfil</a>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+            @if (auth.user()?.role === 'Technician' && auth.user()?.id; as techId) {
+              <a [routerLink]="['/perfiles/tecnico', techId]" class="btn btn-secondary">
+                Ver mi perfil público
+              </a>
+            }
+            <a routerLink="/perfil/editar" class="btn btn-primary">Editar perfil</a>
+          </div>
         </div>
 
         @if (successBanner()) {
@@ -56,6 +63,12 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               <dt>Teléfono</dt>
               <dd [class.muted-value]="!user.phone">
                 {{ user.phone || 'No proporcionado' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Zona general pública</dt>
+              <dd [class.muted-value]="!user.publicRegion">
+                {{ user.publicRegion || 'No proporcionado' }}
               </dd>
             </div>
             <div>

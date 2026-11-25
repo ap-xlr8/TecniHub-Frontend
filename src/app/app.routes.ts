@@ -74,6 +74,24 @@ export const routes: Routes = [
       import('./features/profile/profile-edit.component').then((m) => m.ProfileEditComponent),
   },
   {
+    path: 'perfiles/tecnico/:id',
+    title: 'Perfil público de técnico — TECNIHUB',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/public-profiles/technician-public-profile.component').then(
+        (m) => m.TechnicianPublicProfileComponent,
+      ),
+  },
+  {
+    path: 'perfiles/cliente/:id',
+    title: 'Perfil público de cliente — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/public-profiles/client-public-profile.component').then(
+        (m) => m.ClientPublicProfileComponent,
+      ),
+  },
+  {
     path: 'mensajes',
     title: 'Mensajes — TECNIHUB',
     canActivate: [authGuard],

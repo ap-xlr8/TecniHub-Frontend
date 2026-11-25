@@ -1,9 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { RepairDetailDto } from '../../core/models/operations.models';
+import { PublicReviewItemDto, RepairDetailDto } from '../../core/models/operations.models';
 import { ChatService } from '../../core/services/chat.service';
+import { PublicProfileService } from '../../core/services/public-profile.service';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageGalleryComponent } from '../../shared/components/image-gallery.component';
 import { ImageUploaderCropperComponent } from '../../shared/components/image-uploader-cropper.component';
@@ -15,6 +17,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
   imports: [
     AppShellComponent,
     RouterLink,
+    FormsModule,
     StatusBadgeComponent,
     ImageGalleryComponent,
     ImageUploaderCropperComponent,
@@ -111,7 +114,13 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             <div>
               <dt>Técnico asignado</dt>
               <dd [class.muted-value]="!item.assignedTechnicianName">
-                {{ item.assignedTechnicianName || 'Aún sin asignar' }}
+                @if (item.assignedTechnicianId && item.assignedTechnicianName) {
+                  <a [routerLink]="['/perfiles/tecnico', item.assignedTechnicianId]">
+                    {{ item.assignedTechnicianName }} (ver perfil público)
+                  </a>
+                } @else {
+                  Aún sin asignar
+                }
               </dd>
             </div>
             <div>
@@ -202,6 +211,83 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               Cancelar solicitud
             </button>
           }
+
+          @if (item.status === 'Completed') {
+            <hr style="border: 0; border-top: 1px solid var(--th-border); margin: 1.25rem 0" />
+            <section aria-labelledby="optional-review-heading" class="form-stack">
+              <h2 id="optional-review-heading" style="margin: 0; font-size: 1.05rem">
+                Reseña del servicio (opcional)
+              </h2>
+
+              @if (review(); as submitted) {
+                <div class="alert alert-success">
+                  <strong>Tu reseña fue registrada ({{ submitted.rating }} / 5).</strong>
+                  @if (submitted.comment) {
+                    <p style="margin: 0.35rem 0 0">{{ submitted.comment }}</p>
+                  }
+                </div>
+              } @else {
+                <p class="field-hint" style="margin: 0">
+                  El cierre de tu reparación ya está confirmado. Si lo deseas, puedes calificar de
+                  forma opcional la atención recibida (una sola reseña por servicio).
+                </p>
+
+                <form class="form-stack" (ngSubmit)="submitReview(item.id)">
+                  <fieldset style="border: 0; padding: 0; margin: 0">
+                    <legend style="font-weight: 600; font-size: 0.92rem; margin-bottom: 0.4rem">
+                      Calificación (1 a 5) *
+                    </legend>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <label
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 0.35rem;
+                            padding: 0.4rem 0.75rem;
+                            border: 1px solid var(--th-border);
+                            border-radius: var(--th-radius-sm);
+                            cursor: pointer;
+                          "
+                        >
+                          <input
+                            type="radio"
+                            name="reviewRating"
+                            [value]="star"
+                            [(ngModel)]="reviewRating"
+                          />
+                          <span>{{ star }} / 5</span>
+                        </label>
+                      }
+                    </div>
+                  </fieldset>
+
+                  <div class="field">
+                    <label for="review-comment">Comentario (opcional, máx. 500 caracteres)</label>
+                    <textarea
+                      id="review-comment"
+                      name="reviewComment"
+                      rows="3"
+                      maxlength="500"
+                      class="input-control"
+                      placeholder="Comparte brevemente tu experiencia con el servicio..."
+                      [(ngModel)]="reviewComment"
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      class="btn btn-primary btn-sm"
+                      [disabled]="submittingReview() || reviewRating < 1 || reviewRating > 5"
+                    >
+                      {{ submittingReview() ? 'Enviando...' : 'Publicar reseña opcional' }}
+                    </button>
+                  </div>
+                </form>
+              }
+            </section>
+          }
         </section>
 
         <dialog #confirmClosureDialog aria-labelledby="confirm-closure-title">
@@ -262,6 +348,7 @@ export class ClientRepairDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly repairs = inject(RepairsService);
   private readonly chat = inject(ChatService);
+  private readonly publicProfiles = inject(PublicProfileService);
   private readonly auth = inject(AuthService);
 
   private readonly closureDialogRef =
@@ -272,10 +359,15 @@ export class ClientRepairDetailComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly openingChat = signal(false);
   protected readonly editingImages = signal(false);
+  protected readonly submittingReview = signal(false);
   protected readonly draftImages = signal<string[]>([]);
   protected readonly repair = signal<RepairDetailDto | null>(null);
+  protected readonly review = signal<PublicReviewItemDto | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly feedbackMessage = signal<string | null>(null);
+
+  protected reviewRating = 5;
+  protected reviewComment = '';
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -289,6 +381,9 @@ export class ClientRepairDetailComponent implements OnInit {
       next: (data) => {
         this.repair.set(data);
         this.loading.set(false);
+        if (data.status === 'Completed') {
+          this.loadExistingReview(data.id);
+        }
       },
       error: (err: unknown) => {
         this.loading.set(false);
@@ -383,6 +478,34 @@ export class ClientRepairDetailComponent implements OnInit {
         this.openingChat.set(false);
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
+    });
+  }
+
+  protected submitReview(repairId: string): void {
+    this.submittingReview.set(true);
+    this.errorMessage.set(null);
+    this.publicProfiles
+      .createRepairReview(repairId, {
+        rating: Number(this.reviewRating),
+        comment: this.reviewComment.trim() || null,
+      })
+      .subscribe({
+        next: (created) => {
+          this.submittingReview.set(false);
+          this.review.set(created);
+          this.feedbackMessage.set('Gracias por compartir tu reseña.');
+        },
+        error: (err: unknown) => {
+          this.submittingReview.set(false);
+          this.errorMessage.set(this.auth.extractErrorMessage(err));
+        },
+      });
+  }
+
+  private loadExistingReview(repairId: string): void {
+    this.publicProfiles.getRepairReview(repairId).subscribe({
+      next: (existing) => this.review.set(existing),
+      error: () => undefined,
     });
   }
 }

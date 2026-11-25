@@ -16,6 +16,7 @@ export interface UserSummaryDto {
   role: UserRole;
   isEmailVerified: boolean;
   technicianProfile: TechnicianProfileDto | null;
+  publicRegion?: string | null;
 }
 
 export interface AuthSessionResponse {

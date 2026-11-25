@@ -93,6 +93,25 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             </div>
           </div>
 
+          <div class="field">
+            <label for="edit-public-region">Zona general pública (opcional)</label>
+            <input
+              id="edit-public-region"
+              type="text"
+              class="input-control"
+              placeholder="Ej. Tepeji del Río, Hidalgo (sin calle ni números)"
+              formControlName="publicRegion"
+              [attr.aria-invalid]="isFieldInvalid('publicRegion')"
+            />
+            <p class="field-hint">
+              Visible únicamente como referencia general en tu perfil público limitado; nunca
+              incluyas tu domicilio exacto aquí.
+            </p>
+            @if (isFieldInvalid('publicRegion')) {
+              <p class="error-msg">La zona general no debe superar 120 caracteres.</p>
+            }
+          </div>
+
           @if (isTechnician()) {
             <hr style="border: 0; border-top: 1px solid var(--th-border); margin: 0.4rem 0" />
             <h2 style="margin: 0; font-size: 1.05rem">Información profesional</h2>
@@ -188,6 +207,7 @@ export class ProfileEditComponent implements OnInit {
     experienceYears: [0, [Validators.min(0), Validators.max(60)]],
     serviceZone: ['', [Validators.maxLength(150)]],
     businessName: ['', [Validators.maxLength(120)]],
+    publicRegion: ['', [Validators.maxLength(120)]],
   });
 
   ngOnInit(): void {
@@ -210,6 +230,7 @@ export class ProfileEditComponent implements OnInit {
           experienceYears: user.technicianProfile?.experienceYears ?? 0,
           serviceZone: user.technicianProfile?.serviceZone ?? '',
           businessName: user.technicianProfile?.businessName ?? '',
+          publicRegion: user.publicRegion ?? '',
         });
         this.form.updateValueAndValidity();
       },
@@ -244,6 +265,7 @@ export class ProfileEditComponent implements OnInit {
         experienceYears: this.isTechnician() ? Number(raw.experienceYears) : null,
         serviceZone: this.isTechnician() ? raw.serviceZone.trim() : null,
         businessName: this.isTechnician() ? raw.businessName.trim() || null : null,
+        publicRegion: raw.publicRegion.trim() || null,
       })
       .subscribe({
         next: () => {

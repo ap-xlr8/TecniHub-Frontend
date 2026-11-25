@@ -6,6 +6,7 @@ export interface UpdateOwnProfilePayload {
   experienceYears?: number | null;
   serviceZone?: string | null;
   businessName?: string | null;
+  publicRegion?: string | null;
 }
 
 export interface PostalCodeLookupDto {
@@ -250,4 +251,41 @@ export interface ChatThreadDto {
 
 export interface UnreadCountDto {
   unreadCount: number;
+}
+
+export interface PublicReviewItemDto {
+  id: string;
+  repairRequestId: string;
+  rating: number;
+  comment: string | null;
+  applianceName: string;
+  reviewerDisplayName: string;
+  createdAt: string;
+}
+
+export interface PublicTechnicianProfileDto {
+  technicianUserId: string;
+  displayName: string;
+  businessName: string | null;
+  specialties: string;
+  experienceYears: number;
+  serviceZone: string;
+  memberSinceUtc: string;
+  completedServicesCount: number;
+  reviewCount: number;
+  averageRating: number | null;
+  reviews: PublicReviewItemDto[];
+}
+
+export interface PublicClientProfileDto {
+  clientUserId: string;
+  displayName: string;
+  publicRegion: string | null;
+  memberSinceUtc: string;
+  completedServicesCount: number;
+}
+
+export interface CreateServiceReviewPayload {
+  rating: number;
+  comment: string | null;
 }

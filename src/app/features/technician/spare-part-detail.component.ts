@@ -104,7 +104,9 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             <div>
               <dt>Técnico oferente</dt>
               <dd>
-                {{ item.technicianDisplayName }}
+                <a [routerLink]="['/perfiles/tecnico', item.technicianUserId]">
+                  {{ item.technicianDisplayName }}
+                </a>
                 @if (item.technicianBusinessName) {
                   ({{ item.technicianBusinessName }})
                 }

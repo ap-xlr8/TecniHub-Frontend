@@ -124,7 +124,15 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               </div>
               <div>
                 <dt>Cliente</dt>
-                <dd>{{ item.clientDisplayName }}</dd>
+                <dd>
+                  @if (item.clientUserId) {
+                    <a [routerLink]="['/perfiles/cliente', item.clientUserId]">
+                      {{ item.clientDisplayName }} (ver perfil público)
+                    </a>
+                  } @else {
+                    {{ item.clientDisplayName }}
+                  }
+                </dd>
               </div>
             } @else {
               <div>
