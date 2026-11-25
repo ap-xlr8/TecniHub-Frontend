@@ -1,146 +1,203 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { ClientRepairSummaryDto } from '../../core/models/operations.models';
+import { RepairsService } from '../../core/services/repairs.service';
+import { FALLBACK_IMAGE_DATA_URI } from '../../shared/components/image-uploader-cropper.component';
+import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
+import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-client-dashboard',
+  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, DatePipe],
   template: `
-    <div class="dashboard-shell">
-      <header class="topbar">
-        <div class="brand-header" style="margin: 0">
-          <div class="brand-badge" aria-hidden="true">TH</div>
+    <app-shell>
+      <section class="panel-card" aria-labelledby="client-welcome">
+        <div class="page-header-row">
           <div>
-            <p class="brand-title">TECNIHUB</p>
-            <p class="brand-subtitle">Espacio de Cliente</p>
+            <h1 id="client-welcome" class="page-title">
+              Hola, {{ auth.user()?.firstName }} {{ auth.user()?.lastName }}
+            </h1>
+            <p class="page-lead" style="margin: 0">
+              Consulta el estado de tus solicitudes de reparación o publica una nueva necesidad.
+            </p>
           </div>
+          <a routerLink="/cliente/nueva-solicitud" class="btn btn-primary">
+            + Publicar reparación
+          </a>
         </div>
+      </section>
 
-        <div class="topbar-actions">
-          <span class="role-pill">Rol: Cliente</span>
-          <button type="button" class="btn btn-secondary" (click)="onLogout()">
-            Cerrar sesión
-          </button>
+      @if (closurePendingCount() > 0) {
+        <div class="alert alert-info" role="status">
+          Tienes <strong>{{ closurePendingCount() }}</strong> reparación(es) con
+          <strong>Cierre solicitado</strong> esperando tu confirmación para pasar a Completado.
         </div>
-      </header>
+      }
 
-      <main class="dashboard-main">
-        <section class="panel-card" aria-labelledby="client-welcome">
-          <h1 id="client-welcome" class="page-title">
-            Hola, {{ auth.user()?.firstName }} {{ auth.user()?.lastName }}
-          </h1>
-          <p class="page-lead" style="margin-bottom: 0.75rem">
-            Tu cuenta de cliente está verificada y protegida con sesión renovable de hasta 7 días.
-          </p>
-          <p style="margin: 0; color: var(--th-text-muted); font-size: 0.92rem">
-            Correo: <strong>{{ auth.user()?.email }}</strong>
-            @if (auth.user()?.phone) {
-              · Teléfono: <strong>{{ auth.user()?.phone }}</strong>
-            }
-          </p>
+      @if (errorMessage()) {
+        <div class="alert alert-error" role="alert">{{ errorMessage() }}</div>
+      }
+
+      @if (loading()) {
+        <section class="panel-card">
+          <p class="muted-value" style="margin: 0">Cargando tus solicitudes...</p>
         </section>
-
-        <section class="panel-grid" aria-label="Módulos próximos">
-          <article class="panel-card">
-            <h2 style="margin: 0 0 0.4rem; font-size: 1.05rem">Solicitudes de reparación</h2>
-            <p style="margin: 0; color: var(--th-text-muted); font-size: 0.92rem">
-              En el Sprint 2 podrás publicar solicitudes con fotos, consultar su avance y confirmar
-              la finalización del servicio.
-            </p>
-          </article>
-
-          <article class="panel-card">
-            <h2 style="margin: 0 0 0.4rem; font-size: 1.05rem">Perfil propio</h2>
-            <p style="margin: 0; color: var(--th-text-muted); font-size: 0.92rem">
-              Próximamente podrás actualizar tus datos personales desde tu perfil (HU-005 y HU-006).
-            </p>
-          </article>
+      } @else if (requests().length === 0) {
+        <section class="empty-state" aria-label="Sin solicitudes">
+          <h2>Aún no tienes solicitudes</h2>
+          <p>
+            Publica el electrodoméstico que necesita atención, describe la falla e indica tu horario
+            preferido para que un técnico disponible pueda atenderte.
+          </p>
+          <a routerLink="/cliente/nueva-solicitud" class="btn btn-primary">
+            Publicar mi primera reparación
+          </a>
         </section>
-
-        <section class="panel-card danger-zone" aria-labelledby="delete-account-heading">
-          <h2
-            id="delete-account-heading"
-            style="margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--th-error)"
+      } @else {
+        <div class="tab-bar" role="tablist" aria-label="Filtro de solicitudes">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="tab() === 'active'"
+            (click)="tab.set('active')"
           >
-            Eliminación gradual de cuenta
-          </h2>
-          <p style="margin: 0 0 1rem; color: var(--th-text-muted); font-size: 0.92rem">
-            Si solicitas la baja, tu sesión se revocará de inmediato y tus datos personales se
-            anonimizarán gradualmente conservando la integridad de auditoría.
-          </p>
-          @if (errorMessage()) {
-            <div class="alert alert-error" role="alert" style="margin-bottom: 1rem">
-              {{ errorMessage() }}
-            </div>
-          }
-          <button type="button" class="btn btn-danger" (click)="openDeleteDialog()">
-            Solicitar eliminación de cuenta
-          </button>
-        </section>
-      </main>
-
-      <dialog
-        #deleteDialog
-        aria-labelledby="confirm-del-title"
-        style="border: 1px solid var(--th-border); border-radius: var(--th-radius); padding: 1.5rem; max-width: 28rem"
-      >
-        <h2 id="confirm-del-title" style="margin: 0 0 0.5rem">Confirmar baja gradual</h2>
-        <p style="margin: 0 0 1.25rem; color: var(--th-text-muted)">
-          Tu cuenta quedará desactivada y tus sesiones activas se cerrarán de inmediato. ¿Deseas
-          continuar?
-        </p>
-        <div style="display: flex; gap: 0.75rem; justify-content: flex-end">
-          <button type="button" class="btn btn-secondary" (click)="closeDeleteDialog()">
-            Cancelar
+            Activas ({{ activeRequests().length }})
           </button>
           <button
             type="button"
-            class="btn btn-danger"
-            [disabled]="deleting()"
-            (click)="confirmDeletion()"
+            class="tab-btn"
+            [class.tab-btn--active]="tab() === 'history'"
+            (click)="tab.set('history')"
           >
-            {{ deleting() ? 'Procesando...' : 'Sí, eliminar cuenta' }}
+            Historial ({{ historyRequests().length }})
           </button>
         </div>
-      </dialog>
-    </div>
+
+        @if (visibleRequests().length === 0) {
+          <section class="empty-state">
+            <h2>
+              {{
+                tab() === 'active'
+                  ? 'No tienes solicitudes activas en este momento'
+                  : 'Todavía no tienes solicitudes completadas o canceladas'
+              }}
+            </h2>
+          </section>
+        } @else {
+          <section class="card-list" aria-label="Listado de solicitudes">
+            @for (item of visibleRequests(); track item.id) {
+              <article class="item-card">
+                <div style="display: grid; gap: 0.6rem">
+                  @if (item.thumbnailUrl) {
+                    <img
+                      class="item-card-thumb"
+                      [src]="item.thumbnailUrl"
+                      [alt]="'Foto de ' + item.applianceName"
+                      loading="lazy"
+                      (error)="onImgError($event)"
+                    />
+                  }
+
+                  <div
+                    style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
+                  >
+                    <div>
+                      <h2 style="margin: 0; font-size: 1.08rem">{{ item.applianceName }}</h2>
+                      @if (item.brandModel) {
+                        <p class="field-hint">{{ item.brandModel }}</p>
+                      }
+                    </div>
+                    <app-status-badge [code]="item.status" [label]="item.statusLabel" />
+                  </div>
+
+                  <p style="margin: 0; font-size: 0.92rem">{{ item.issueSummary }}</p>
+
+                  <div class="item-card-meta">
+                    <span>
+                      <strong>Zona:</strong> {{ item.location.neighborhood }},
+                      {{ item.location.municipality }} (CP {{ item.location.postalCode }})
+                    </span>
+                    <span>
+                      <strong>Preferencia:</strong> {{ item.preferredDate }} ·
+                      {{ item.preferredTimeSlot }}
+                    </span>
+                    @if (item.assignedTechnicianName) {
+                      <span
+                        ><strong>Técnico asignado:</strong> {{ item.assignedTechnicianName }}</span
+                      >
+                    }
+                    @if (item.scheduledStartAt) {
+                      <span>
+                        <strong>Cita programada:</strong>
+                        {{ item.scheduledStartAt | date: 'medium' }}
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <div class="item-card-actions">
+                  <a
+                    [routerLink]="['/cliente/solicitudes', item.id]"
+                    class="btn btn-sm"
+                    [class.btn-primary]="item.status === 'ClosureRequested'"
+                    [class.btn-secondary]="item.status !== 'ClosureRequested'"
+                  >
+                    {{
+                      item.status === 'ClosureRequested'
+                        ? 'Revisar y confirmar cierre'
+                        : 'Ver detalle'
+                    }}
+                  </a>
+                </div>
+              </article>
+            }
+          </section>
+        }
+      }
+    </app-shell>
   `,
 })
-export class ClientDashboardComponent {
+export class ClientDashboardComponent implements OnInit {
   protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
-  private readonly dialogRef = viewChild<ElementRef<HTMLDialogElement>>('deleteDialog');
+  private readonly repairsService = inject(RepairsService);
 
-  protected readonly deleting = signal(false);
+  protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly requests = signal<ClientRepairSummaryDto[]>([]);
+  protected readonly tab = signal<'active' | 'history'>('active');
 
-  protected onLogout(): void {
-    this.auth.logout().subscribe(() => {
-      void this.router.navigateByUrl('/iniciar-sesion');
-    });
-  }
+  protected readonly activeRequests = computed(() =>
+    this.requests().filter((r) => r.status !== 'Completed' && r.status !== 'Cancelled'),
+  );
+  protected readonly historyRequests = computed(() =>
+    this.requests().filter((r) => r.status === 'Completed' || r.status === 'Cancelled'),
+  );
+  protected readonly visibleRequests = computed(() =>
+    this.tab() === 'active' ? this.activeRequests() : this.historyRequests(),
+  );
+  protected readonly closurePendingCount = computed(
+    () => this.requests().filter((r) => r.status === 'ClosureRequested').length,
+  );
 
-  protected openDeleteDialog(): void {
-    this.dialogRef()?.nativeElement.showModal();
-  }
-
-  protected closeDeleteDialog(): void {
-    this.dialogRef()?.nativeElement.close();
-  }
-
-  protected confirmDeletion(): void {
-    this.deleting.set(true);
-    this.errorMessage.set(null);
-    this.auth.requestAccountDeletion().subscribe({
-      next: () => {
-        this.deleting.set(false);
-        this.closeDeleteDialog();
-        void this.router.navigateByUrl('/iniciar-sesion');
+  ngOnInit(): void {
+    this.repairsService.getMine().subscribe({
+      next: (list) => {
+        this.requests.set(list);
+        this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.deleting.set(false);
-        this.closeDeleteDialog();
+        this.loading.set(false);
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
+  }
+
+  protected onImgError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img.src !== FALLBACK_IMAGE_DATA_URI) {
+      img.src = FALLBACK_IMAGE_DATA_URI;
+    }
   }
 }

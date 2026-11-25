@@ -1,68 +1,179 @@
 import { Routes } from '@angular/router';
-import { guestGuard, roleGuard } from './core/auth/auth.guards';
-import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
-import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterClientComponent } from './features/auth/register-client/register-client.component';
-import { RegisterRoleComponent } from './features/auth/register-role/register-role.component';
-import { RegisterTechnicianComponent } from './features/auth/register-technician/register-technician.component';
-import { VerifyEmailComponent } from './features/auth/verify-email/verify-email.component';
-import { ClientDashboardComponent } from './features/client/client-dashboard.component';
-import { HomeComponent } from './features/home/home.component';
-import { TechnicianDashboardComponent } from './features/technician/technician-dashboard.component';
+import { authGuard, guestGuard, roleGuard } from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
     title: 'TECNIHUB — Servicios técnicos y refacciones',
-    component: HomeComponent,
+    loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
   },
   {
     path: 'iniciar-sesion',
     title: 'Iniciar sesión — TECNIHUB',
     canActivate: [guestGuard],
-    component: LoginComponent,
+    loadComponent: () =>
+      import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
   {
     path: 'registro',
     title: 'Crear cuenta — TECNIHUB',
     canActivate: [guestGuard],
-    component: RegisterRoleComponent,
+    loadComponent: () =>
+      import('./features/auth/register-role/register-role.component').then(
+        (m) => m.RegisterRoleComponent,
+      ),
   },
   {
     path: 'registro/cliente',
     title: 'Registro de cliente — TECNIHUB',
     canActivate: [guestGuard],
-    component: RegisterClientComponent,
+    loadComponent: () =>
+      import('./features/auth/register-client/register-client.component').then(
+        (m) => m.RegisterClientComponent,
+      ),
   },
   {
     path: 'registro/tecnico',
     title: 'Registro de técnico — TECNIHUB',
     canActivate: [guestGuard],
-    component: RegisterTechnicianComponent,
+    loadComponent: () =>
+      import('./features/auth/register-technician/register-technician.component').then(
+        (m) => m.RegisterTechnicianComponent,
+      ),
   },
   {
     path: 'verificar-correo',
     title: 'Verificar correo — TECNIHUB',
-    component: VerifyEmailComponent,
+    loadComponent: () =>
+      import('./features/auth/verify-email/verify-email.component').then(
+        (m) => m.VerifyEmailComponent,
+      ),
   },
   {
     path: 'recuperar-contrasena',
     title: 'Recuperar contraseña — TECNIHUB',
     canActivate: [guestGuard],
-    component: ForgotPasswordComponent,
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.component').then(
+        (m) => m.ForgotPasswordComponent,
+      ),
+  },
+  {
+    path: 'perfil',
+    title: 'Mi perfil — TECNIHUB',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/profile/profile-view.component').then((m) => m.ProfileViewComponent),
+  },
+  {
+    path: 'perfil/editar',
+    title: 'Editar perfil — TECNIHUB',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/profile/profile-edit.component').then((m) => m.ProfileEditComponent),
+  },
+  {
+    path: 'mensajes',
+    title: 'Mensajes — TECNIHUB',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/chat/chat-inbox.component').then((m) => m.ChatInboxComponent),
+  },
+  {
+    path: 'mensajes/:id',
+    title: 'Conversación — TECNIHUB',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/chat/chat-inbox.component').then((m) => m.ChatInboxComponent),
   },
   {
     path: 'cliente',
-    title: 'Panel de cliente — TECNIHUB',
+    title: 'Mis solicitudes — TECNIHUB',
     canActivate: [roleGuard('Client')],
-    component: ClientDashboardComponent,
+    loadComponent: () =>
+      import('./features/client/client-dashboard.component').then(
+        (m) => m.ClientDashboardComponent,
+      ),
+  },
+  {
+    path: 'cliente/nueva-solicitud',
+    title: 'Publicar reparación — TECNIHUB',
+    canActivate: [roleGuard('Client')],
+    loadComponent: () =>
+      import('./features/client/repair-create.component').then((m) => m.RepairCreateComponent),
+  },
+  {
+    path: 'cliente/solicitudes/:id',
+    title: 'Detalle de solicitud — TECNIHUB',
+    canActivate: [roleGuard('Client')],
+    loadComponent: () =>
+      import('./features/client/client-repair-detail.component').then(
+        (m) => m.ClientRepairDetailComponent,
+      ),
   },
   {
     path: 'tecnico',
-    title: 'Panel de técnico — TECNIHUB',
+    title: 'Tablón de servicios — TECNIHUB',
     canActivate: [roleGuard('Technician')],
-    component: TechnicianDashboardComponent,
+    loadComponent: () =>
+      import('./features/technician/technician-dashboard.component').then(
+        (m) => m.TechnicianDashboardComponent,
+      ),
+  },
+  {
+    path: 'tecnico/servicios/:id',
+    title: 'Detalle de servicio — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/technician-repair-detail.component').then(
+        (m) => m.TechnicianRepairDetailComponent,
+      ),
+  },
+  {
+    path: 'tecnico/itinerario',
+    title: 'Mi itinerario — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/technician-itinerary.component').then(
+        (m) => m.TechnicianItineraryComponent,
+      ),
+  },
+  {
+    path: 'tecnico/refacciones',
+    title: 'Refacciones — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/spare-parts-board.component').then(
+        (m) => m.SparePartsBoardComponent,
+      ),
+  },
+  {
+    path: 'tecnico/refacciones/nueva',
+    title: 'Publicar refacción — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/spare-part-form.component').then(
+        (m) => m.SparePartFormComponent,
+      ),
+  },
+  {
+    path: 'tecnico/refacciones/:id/editar',
+    title: 'Editar refacción — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/spare-part-form.component').then(
+        (m) => m.SparePartFormComponent,
+      ),
+  },
+  {
+    path: 'tecnico/refacciones/:id',
+    title: 'Detalle de refacción — TECNIHUB',
+    canActivate: [roleGuard('Technician')],
+    loadComponent: () =>
+      import('./features/technician/spare-part-detail.component').then(
+        (m) => m.SparePartDetailComponent,
+      ),
   },
   { path: '**', redirectTo: '' },
 ];

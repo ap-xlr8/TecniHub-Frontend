@@ -1,153 +1,162 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { OpenRepairBoardItemDto } from '../../core/models/operations.models';
+import { RepairsService } from '../../core/services/repairs.service';
+import { FALLBACK_IMAGE_DATA_URI } from '../../shared/components/image-uploader-cropper.component';
+import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
+import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-technician-dashboard',
+  imports: [AppShellComponent, RouterLink, FormsModule, StatusBadgeComponent],
   template: `
-    <div class="dashboard-shell">
-      <header class="topbar">
-        <div class="brand-header" style="margin: 0">
-          <div class="brand-badge" aria-hidden="true">TH</div>
+    <app-shell>
+      <section class="panel-card" aria-labelledby="tech-board-heading">
+        <div class="page-header-row">
           <div>
-            <p class="brand-title">TECNIHUB</p>
-            <p class="brand-subtitle">Espacio de Técnico</p>
+            <h1 id="tech-board-heading" class="page-title">Tablón de servicios</h1>
+            <p class="page-lead" style="margin: 0">
+              Solicitudes de reparación disponibles. Por privacidad, la ubicación se muestra hasta
+              colonia hasta que aceptes y confirmes la asignación.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+            <a routerLink="/tecnico/itinerario" class="btn btn-secondary btn-sm">Mi itinerario</a>
+            <a routerLink="/tecnico/refacciones" class="btn btn-teal btn-sm">Ver refacciones</a>
           </div>
         </div>
 
-        <div class="topbar-actions">
-          <span class="role-pill">Rol: Técnico</span>
-          <button type="button" class="btn btn-secondary" (click)="onLogout()">
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
+        <form class="toolbar-row" style="margin-top: 1rem" (ngSubmit)="loadBoard()">
+          <div class="field">
+            <label for="board-search">Buscar por aparato, falla, colonia o código postal</label>
+            <input
+              id="board-search"
+              name="searchTerm"
+              type="search"
+              class="input-control"
+              placeholder="Ej. Lavadora, Refrigerador, Centro, 42800"
+              [(ngModel)]="searchTerm"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Buscar</button>
+          @if (searchTerm.trim()) {
+            <button type="button" class="btn btn-secondary" (click)="clearSearch()">Limpiar</button>
+          }
+        </form>
+      </section>
 
-      <main class="dashboard-main">
-        <section class="panel-card" aria-labelledby="tech-welcome">
-          <h1 id="tech-welcome" class="page-title">
-            Hola, {{ auth.user()?.firstName }} {{ auth.user()?.lastName }}
-          </h1>
-          <p class="page-lead" style="margin-bottom: 0.75rem">
-            Tu perfil técnico está activo y verificado.
+      @if (errorMessage()) {
+        <div class="alert alert-error" role="alert">{{ errorMessage() }}</div>
+      }
+
+      @if (loading()) {
+        <section class="panel-card">
+          <p class="muted-value" style="margin: 0">Cargando solicitudes disponibles...</p>
+        </section>
+      } @else if (items().length === 0) {
+        <section class="empty-state" aria-label="Tablón vacío">
+          <h2>No hay solicitudes disponibles</h2>
+          <p>
+            No encontramos reparaciones abiertas con los criterios actuales. Vuelve a consultar más
+            tarde o revisa tu itinerario.
           </p>
-          @if (auth.user()?.technicianProfile; as profile) {
-            <dl style="margin: 0; display: grid; gap: 0.35rem; font-size: 0.92rem">
-              <div><strong>Especialidades:</strong> {{ profile.specialties }}</div>
-              <div><strong>Experiencia:</strong> {{ profile.experienceYears }} año(s)</div>
-              <div><strong>Zona de atención:</strong> {{ profile.serviceZone }}</div>
-              @if (profile.businessName) {
-                <div><strong>Nombre comercial:</strong> {{ profile.businessName }}</div>
-              }
-            </dl>
+          <a routerLink="/tecnico/itinerario" class="btn btn-secondary">Ir a mi itinerario</a>
+        </section>
+      } @else {
+        <section class="card-list" aria-label="Solicitudes abiertas">
+          @for (item of items(); track item.id) {
+            <article class="item-card">
+              <div style="display: grid; gap: 0.6rem">
+                @if (item.thumbnailUrl) {
+                  <img
+                    class="item-card-thumb"
+                    [src]="item.thumbnailUrl"
+                    [alt]="'Foto de ' + item.applianceName"
+                    loading="lazy"
+                    (error)="onImgError($event)"
+                  />
+                }
+
+                <div
+                  style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
+                >
+                  <div>
+                    <h2 style="margin: 0; font-size: 1.08rem">{{ item.applianceName }}</h2>
+                    @if (item.brandModel) {
+                      <p class="field-hint">{{ item.brandModel }}</p>
+                    }
+                  </div>
+                  <app-status-badge [code]="item.status" [label]="item.statusLabel" />
+                </div>
+
+                <p style="margin: 0; font-size: 0.92rem">{{ item.issueSummary }}</p>
+
+                <div class="item-card-meta">
+                  <span>
+                    <strong>Ubicación (hasta colonia):</strong> {{ item.location.neighborhood }},
+                    {{ item.location.municipality }}, {{ item.location.state }} (CP
+                    {{ item.location.postalCode }})
+                  </span>
+                  <span>
+                    <strong>Preferencia del cliente:</strong> {{ item.preferredDate }} ·
+                    {{ item.preferredTimeSlot }}
+                  </span>
+                  <span><strong>Fotografías:</strong> {{ item.imageCount }}</span>
+                </div>
+              </div>
+
+              <div class="item-card-actions">
+                <a [routerLink]="['/tecnico/servicios', item.id]" class="btn btn-primary btn-sm">
+                  Ver detalle y aceptar
+                </a>
+              </div>
+            </article>
           }
         </section>
-
-        <section class="panel-grid" aria-label="Módulos próximos">
-          <article class="panel-card">
-            <h2 style="margin: 0 0 0.4rem; font-size: 1.05rem">
-              Tablón de servicios y refacciones
-            </h2>
-            <p style="margin: 0; color: var(--th-text-muted); font-size: 0.92rem">
-              En el Sprint 2 podrás aceptar reparaciones disponibles y publicar refacciones (HU-008
-              y HU-009).
-            </p>
-          </article>
-
-          <article class="panel-card">
-            <h2 style="margin: 0 0 0.4rem; font-size: 1.05rem">Itinerario técnico</h2>
-            <p style="margin: 0; color: var(--th-text-muted); font-size: 0.92rem">
-              Organiza tus citas aceptadas y solicita la confirmación de cierre al cliente (HU-010 y
-              HU-014).
-            </p>
-          </article>
-        </section>
-
-        <section class="panel-card danger-zone" aria-labelledby="tech-delete-heading">
-          <h2
-            id="tech-delete-heading"
-            style="margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--th-error)"
-          >
-            Eliminación gradual de cuenta
-          </h2>
-          <p style="margin: 0 0 1rem; color: var(--th-text-muted); font-size: 0.92rem">
-            Al solicitar la baja, tus sesiones se cerrarán inmediatamente y tus datos personales
-            serán anonimizados de forma progresiva.
-          </p>
-          @if (errorMessage()) {
-            <div class="alert alert-error" role="alert" style="margin-bottom: 1rem">
-              {{ errorMessage() }}
-            </div>
-          }
-          <button type="button" class="btn btn-danger" (click)="openDeleteDialog()">
-            Solicitar eliminación de cuenta
-          </button>
-        </section>
-      </main>
-
-      <dialog
-        #deleteDialog
-        aria-labelledby="tech-del-title"
-        style="border: 1px solid var(--th-border); border-radius: var(--th-radius); padding: 1.5rem; max-width: 28rem"
-      >
-        <h2 id="tech-del-title" style="margin: 0 0 0.5rem">Confirmar baja gradual</h2>
-        <p style="margin: 0 0 1.25rem; color: var(--th-text-muted)">
-          Tu cuenta técnica quedará desactivada y tus sesiones activas se cerrarán de inmediato.
-          ¿Deseas continuar?
-        </p>
-        <div style="display: flex; gap: 0.75rem; justify-content: flex-end">
-          <button type="button" class="btn btn-secondary" (click)="closeDeleteDialog()">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="btn btn-danger"
-            [disabled]="deleting()"
-            (click)="confirmDeletion()"
-          >
-            {{ deleting() ? 'Procesando...' : 'Sí, eliminar cuenta' }}
-          </button>
-        </div>
-      </dialog>
-    </div>
+      }
+    </app-shell>
   `,
 })
-export class TechnicianDashboardComponent {
-  protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
-  private readonly dialogRef = viewChild<ElementRef<HTMLDialogElement>>('deleteDialog');
+export class TechnicianDashboardComponent implements OnInit {
+  private readonly repairs = inject(RepairsService);
+  private readonly auth = inject(AuthService);
 
-  protected readonly deleting = signal(false);
+  protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly items = signal<OpenRepairBoardItemDto[]>([]);
+  protected searchTerm = '';
 
-  protected onLogout(): void {
-    this.auth.logout().subscribe(() => {
-      void this.router.navigateByUrl('/iniciar-sesion');
-    });
+  ngOnInit(): void {
+    this.loadBoard();
   }
 
-  protected openDeleteDialog(): void {
-    this.dialogRef()?.nativeElement.showModal();
-  }
-
-  protected closeDeleteDialog(): void {
-    this.dialogRef()?.nativeElement.close();
-  }
-
-  protected confirmDeletion(): void {
-    this.deleting.set(true);
+  protected loadBoard(): void {
+    this.loading.set(true);
     this.errorMessage.set(null);
-    this.auth.requestAccountDeletion().subscribe({
-      next: () => {
-        this.deleting.set(false);
-        this.closeDeleteDialog();
-        void this.router.navigateByUrl('/iniciar-sesion');
+    this.repairs.getOpenBoard(this.searchTerm).subscribe({
+      next: (list) => {
+        this.items.set(list);
+        this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.deleting.set(false);
-        this.closeDeleteDialog();
+        this.loading.set(false);
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
+  }
+
+  protected clearSearch(): void {
+    this.searchTerm = '';
+    this.loadBoard();
+  }
+
+  protected onImgError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img.src !== FALLBACK_IMAGE_DATA_URI) {
+      img.src = FALLBACK_IMAGE_DATA_URI;
+    }
   }
 }

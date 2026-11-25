@@ -143,6 +143,10 @@ export class AuthService {
       .pipe(tap(() => this.clearSession()));
   }
 
+  updateCurrentUser(user: UserSummaryDto): void {
+    this.userSignal.set(user);
+  }
+
   getHomeRouteForRole(role: UserRole | null): string {
     if (role === 'Technician') {
       return '/tecnico';
