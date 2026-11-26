@@ -4,11 +4,12 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { PublicClientProfileDto } from '../../core/models/operations.models';
 import { PublicProfileService } from '../../core/services/public-profile.service';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-client-public-profile',
-  imports: [AppShellComponent, DatePipe],
+  imports: [AppShellComponent, DatePipe, UserAvatarComponent],
   template: `
     <app-shell>
       @if (loading()) {
@@ -28,12 +29,19 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
       } @else if (profile(); as client) {
         <section class="panel-card" aria-labelledby="public-client-heading">
           <div class="page-header-row" style="margin-bottom: 1.25rem">
-            <div>
-              <h1 id="public-client-heading" class="page-title">{{ client.displayName }}</h1>
-              <p class="page-lead" style="margin: 0">
-                Perfil público limitado de cliente · Miembro desde
-                {{ client.memberSinceUtc | date: 'MM/yyyy' }}
-              </p>
+            <div style="display: flex; align-items: center; gap: 1rem">
+              <app-user-avatar
+                [name]="client.displayName"
+                [avatarUrl]="client.avatarUrl"
+                size="lg"
+              />
+              <div>
+                <h1 id="public-client-heading" class="page-title">{{ client.displayName }}</h1>
+                <p class="page-lead" style="margin: 0">
+                  Perfil público limitado de cliente · Miembro desde
+                  {{ client.memberSinceUtc | date: 'MM/yyyy' }}
+                </p>
+              </div>
             </div>
             <button type="button" class="btn btn-secondary" (click)="goBack()">Volver</button>
           </div>

@@ -24,10 +24,24 @@ export class RepairsService {
     return this.http.get<ClientRepairSummaryDto[]>(`${this.apiBase}/mine`);
   }
 
-  getOpenBoard(search?: string): Observable<OpenRepairBoardItemDto[]> {
+  getOpenBoard(filters?: {
+    search?: string;
+    state?: string;
+    municipality?: string;
+    postalCode?: string;
+  }): Observable<OpenRepairBoardItemDto[]> {
     let params = new HttpParams();
-    if (search?.trim()) {
-      params = params.set('search', search.trim());
+    if (filters?.search?.trim()) {
+      params = params.set('search', filters.search.trim());
+    }
+    if (filters?.state?.trim()) {
+      params = params.set('state', filters.state.trim());
+    }
+    if (filters?.municipality?.trim()) {
+      params = params.set('municipality', filters.municipality.trim());
+    }
+    if (filters?.postalCode?.trim()) {
+      params = params.set('postalCode', filters.postalCode.trim());
     }
     return this.http.get<OpenRepairBoardItemDto[]>(`${this.apiBase}/board`, { params });
   }
@@ -57,14 +71,33 @@ export class RepairsService {
     );
   }
 
-  startWork(id: string): Observable<RepairDetailDto> {
-    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/start`, {});
+  markOnTheWay(id: string, estimatedArrivalMinutes: number | null): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/on-the-way`, {
+      estimatedArrivalMinutes,
+    });
+  }
+
+  markArrived(id: string): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/arrived`, {});
+  }
+
+  startWork(id: string, arrivalPinCode?: string | null): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/start`, {
+      arrivalPinCode: arrivalPinCode?.trim() || null,
+    });
   }
 
   requestClosure(id: string, closureNotes: string | null): Observable<RepairDetailDto> {
     return this.http.post<RepairDetailDto>(
       `${this.apiBase}/${encodeURIComponent(id)}/request-closure`,
       { closureNotes },
+    );
+  }
+
+  rejectClosure(id: string, reason: string): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(
+      `${this.apiBase}/${encodeURIComponent(id)}/reject-closure`,
+      { reason },
     );
   }
 
@@ -75,7 +108,15 @@ export class RepairsService {
     );
   }
 
-  cancel(id: string): Observable<RepairDetailDto> {
-    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/cancel`, {});
+  releaseAssignment(id: string, reason: string): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/release`, {
+      reason,
+    });
+  }
+
+  cancel(id: string, reason?: string | null): Observable<RepairDetailDto> {
+    return this.http.post<RepairDetailDto>(`${this.apiBase}/${encodeURIComponent(id)}/cancel`, {
+      reason: reason?.trim() || null,
+    });
   }
 }

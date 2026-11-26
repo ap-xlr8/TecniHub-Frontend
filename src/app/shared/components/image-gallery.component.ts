@@ -25,7 +25,22 @@ import { FALLBACK_IMAGE_DATA_URI } from './image-uploader-cropper.component';
         }
       </div>
     } @else {
-      <p class="muted-value" style="margin: 0">Sin fotografías adjuntas.</p>
+      <div class="image-placeholder-card" role="img" aria-label="Sin fotografías de referencia">
+        <svg
+          width="36"
+          height="36"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <circle cx="8.5" cy="10" r="1.5" />
+          <path d="M21 16l-5-5L5 19" />
+        </svg>
+        <span>Sin fotografías de referencia</span>
+      </div>
     }
 
     <dialog #previewDialog aria-labelledby="gallery-preview-title">

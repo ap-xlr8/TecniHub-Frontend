@@ -4,13 +4,19 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { OpenRepairBoardItemDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
-import { FALLBACK_IMAGE_DATA_URI } from '../../shared/components/image-uploader-cropper.component';
+import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-technician-dashboard',
-  imports: [AppShellComponent, RouterLink, FormsModule, StatusBadgeComponent],
+  imports: [
+    AppShellComponent,
+    RouterLink,
+    FormsModule,
+    StatusBadgeComponent,
+    ImageCarouselComponent,
+  ],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="tech-board-heading">
@@ -31,18 +37,42 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
         <form class="toolbar-row" style="margin-top: 1rem" (ngSubmit)="loadBoard()">
           <div class="field">
-            <label for="board-search">Buscar por aparato, falla, colonia o código postal</label>
+            <label for="board-search">Buscar aparato, falla o colonia</label>
             <input
               id="board-search"
               name="searchTerm"
               type="search"
               class="input-control"
-              placeholder="Ej. Lavadora, Refrigerador, Centro, 42800"
+              placeholder="Ej. Lavadora, Refrigerador, Centro"
               [(ngModel)]="searchTerm"
             />
           </div>
+          <div class="field" style="max-inline-size: 13rem">
+            <label for="board-municipality">Municipio</label>
+            <input
+              id="board-municipality"
+              name="municipalityFilter"
+              type="text"
+              class="input-control"
+              placeholder="Ej. Tepeji"
+              [(ngModel)]="municipalityFilter"
+            />
+          </div>
+          <div class="field" style="max-inline-size: 9rem">
+            <label for="board-cp">Código postal</label>
+            <input
+              id="board-cp"
+              name="postalCodeFilter"
+              type="text"
+              maxlength="5"
+              inputmode="numeric"
+              class="input-control"
+              placeholder="42855"
+              [(ngModel)]="postalCodeFilter"
+            />
+          </div>
           <button type="submit" class="btn btn-primary">Buscar</button>
-          @if (searchTerm.trim()) {
+          @if (hasFilters()) {
             <button type="button" class="btn btn-secondary" (click)="clearSearch()">Limpiar</button>
           }
         </form>
@@ -70,15 +100,11 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           @for (item of items(); track item.id) {
             <article class="item-card">
               <div style="display: grid; gap: 0.6rem">
-                @if (item.thumbnailUrl) {
-                  <img
-                    class="item-card-thumb"
-                    [src]="item.thumbnailUrl"
-                    [alt]="'Foto de ' + item.applianceName"
-                    loading="lazy"
-                    (error)="onImgError($event)"
-                  />
-                }
+                <app-image-carousel
+                  [images]="item.imageUrls"
+                  [fallbackThumbnail]="item.thumbnailUrl"
+                  [altPrefix]="'Foto de ' + item.applianceName"
+                />
 
                 <div
                   style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
@@ -128,35 +154,44 @@ export class TechnicianDashboardComponent implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly items = signal<OpenRepairBoardItemDto[]>([]);
   protected searchTerm = '';
+  protected municipalityFilter = '';
+  protected postalCodeFilter = '';
 
   ngOnInit(): void {
     this.loadBoard();
   }
 
+  protected hasFilters(): boolean {
+    return Boolean(
+      this.searchTerm.trim() || this.municipalityFilter.trim() || this.postalCodeFilter.trim(),
+    );
+  }
+
   protected loadBoard(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.repairs.getOpenBoard(this.searchTerm).subscribe({
-      next: (list) => {
-        this.items.set(list);
-        this.loading.set(false);
-      },
-      error: (err: unknown) => {
-        this.loading.set(false);
-        this.errorMessage.set(this.auth.extractErrorMessage(err));
-      },
-    });
+    this.repairs
+      .getOpenBoard({
+        search: this.searchTerm,
+        municipality: this.municipalityFilter,
+        postalCode: this.postalCodeFilter,
+      })
+      .subscribe({
+        next: (list) => {
+          this.items.set(list);
+          this.loading.set(false);
+        },
+        error: (err: unknown) => {
+          this.loading.set(false);
+          this.errorMessage.set(this.auth.extractErrorMessage(err));
+        },
+      });
   }
 
   protected clearSearch(): void {
     this.searchTerm = '';
+    this.municipalityFilter = '';
+    this.postalCodeFilter = '';
     this.loadBoard();
-  }
-
-  protected onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (img.src !== FALLBACK_IMAGE_DATA_URI) {
-      img.src = FALLBACK_IMAGE_DATA_URI;
-    }
   }
 }

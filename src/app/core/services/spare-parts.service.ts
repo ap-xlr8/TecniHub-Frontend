@@ -17,6 +17,9 @@ export class SparePartsService {
     search?: string;
     category?: string;
     modality?: string;
+    condition?: string;
+    minPrice?: number | null;
+    maxPrice?: number | null;
   }): Observable<SparePartSummaryDto[]> {
     let params = new HttpParams();
     if (filters?.search?.trim()) {
@@ -27,6 +30,15 @@ export class SparePartsService {
     }
     if (filters?.modality?.trim()) {
       params = params.set('modality', filters.modality.trim());
+    }
+    if (filters?.condition?.trim()) {
+      params = params.set('condition', filters.condition.trim());
+    }
+    if (filters?.minPrice != null && !Number.isNaN(filters.minPrice) && filters.minPrice > 0) {
+      params = params.set('minPrice', String(filters.minPrice));
+    }
+    if (filters?.maxPrice != null && !Number.isNaN(filters.maxPrice) && filters.maxPrice > 0) {
+      params = params.set('maxPrice', String(filters.maxPrice));
     }
     return this.http.get<SparePartSummaryDto[]>(this.apiBase, { params });
   }
@@ -52,5 +64,9 @@ export class SparePartsService {
       `${this.apiBase}/${encodeURIComponent(id)}/availability`,
       { isAvailable },
     );
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiBase}/${encodeURIComponent(id)}`);
   }
 }

@@ -16,25 +16,33 @@ import { RouterLink } from '@angular/router';
         </header>
 
         <h1 id="role-heading" class="page-title">¿Cómo deseas usar TECNIHUB?</h1>
-        <p class="page-lead">Selecciona el tipo de cuenta que corresponde a tu perfil.</p>
+        <p class="page-lead">
+          Selecciona la tarjeta correspondiente al tipo de cuenta que necesitas.
+        </p>
 
         <div class="role-cards">
-          <a routerLink="/registro/cliente" class="role-card">
+          <a routerLink="/registro/cliente" class="role-card role-card--clean">
+            <div class="role-card-top">
+              <span class="role-card-icon" aria-hidden="true">🏠</span>
+              <span class="role-card-arrow" aria-hidden="true">→</span>
+            </div>
             <h2>Soy Cliente</h2>
             <p>
-              Publica solicitudes de reparación de electrodomésticos, consulta su avance y confirma
-              el cierre del servicio.
+              Publica solicitudes de reparación de electrodomésticos, da seguimiento paso a paso a
+              tu visita y confirma el cierre del servicio.
             </p>
-            <span class="btn btn-primary">Registrarme como cliente</span>
           </a>
 
-          <a routerLink="/registro/tecnico" class="role-card">
+          <a routerLink="/registro/tecnico" class="role-card role-card--clean">
+            <div class="role-card-top">
+              <span class="role-card-icon" aria-hidden="true">🛠️</span>
+              <span class="role-card-arrow" aria-hidden="true">→</span>
+            </div>
             <h2>Soy Técnico</h2>
             <p>
-              Consulta solicitudes disponibles en tu zona, gestiona tu itinerario y publica
-              refacciones en el tablón.
+              Consulta solicitudes disponibles en tu zona, gestiona tu itinerario, atiende clientes
+              y publica refacciones en el tablón.
             </p>
-            <span class="btn btn-secondary">Registrarme como técnico</span>
           </a>
         </div>
 

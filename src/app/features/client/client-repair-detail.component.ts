@@ -9,6 +9,7 @@ import { PublicProfileService } from '../../core/services/public-profile.service
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageGalleryComponent } from '../../shared/components/image-gallery.component';
 import { ImageUploaderCropperComponent } from '../../shared/components/image-uploader-cropper.component';
+import { RepairTimelineComponent } from '../../shared/components/repair-timeline.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
@@ -21,6 +22,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
     StatusBadgeComponent,
     ImageGalleryComponent,
     ImageUploaderCropperComponent,
+    RepairTimelineComponent,
     DatePipe,
   ],
   template: `
@@ -76,6 +78,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             </div>
           }
 
+          <app-repair-timeline [repair]="item" />
+
           @if (item.status === 'ClosureRequested') {
             <div
               class="alert alert-info"
@@ -89,7 +93,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               @if (item.closureNotes) {
                 <div><strong>Notas del técnico:</strong> {{ item.closureNotes }}</div>
               }
-              <div>
+              <div style="display: flex; gap: 0.6rem; flex-wrap: wrap">
                 <button
                   type="button"
                   class="btn btn-primary"
@@ -97,6 +101,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                   (click)="openConfirmClosureDialog()"
                 >
                   Confirmar finalización del servicio
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  [disabled]="busy()"
+                  (click)="openRejectClosureDialog()"
+                >
+                  Reportar pendiente
                 </button>
               </div>
             </div>
@@ -127,7 +139,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               <dt>Programación de cita</dt>
               <dd [class.muted-value]="!item.scheduledStartAt">
                 @if (item.scheduledStartAt) {
-                  {{ item.scheduledStartAt | date: 'medium' }}
+                  {{ item.scheduledStartAt | date: "dd/MM/yyyy HH:mm 'hrs'" }}
                 } @else {
                   Pendiente de programación por el técnico
                 }
@@ -166,6 +178,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             <app-image-uploader-cropper
               inputId="edit-repair-photos"
               label="Actualizar fotografías de la solicitud"
+              [minImages]="1"
+              [maxImages]="6"
               [imageUrls]="draftImages()"
               (imageUrlsChange)="draftImages.set($event)"
             />
@@ -200,7 +214,9 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             }
           }
 
-          @if (item.status === 'Open') {
+          @if (
+            item.status === 'Open' || item.status === 'Assigned' || item.status === 'Scheduled'
+          ) {
             <hr style="border: 0; border-top: 1px solid var(--th-border); margin: 1.25rem 0" />
             <button
               type="button"
@@ -221,7 +237,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
               @if (review(); as submitted) {
                 <div class="alert alert-success">
-                  <strong>Tu reseña fue registrada ({{ submitted.rating }} / 5).</strong>
+                  <strong>
+                    Tu reseña fue registrada:
+                    <span class="star-display" aria-hidden="true">{{
+                      formatStars(submitted.rating)
+                    }}</span>
+                    ({{ submitted.rating }}
+                    {{ submitted.rating === 1 ? 'estrella' : 'estrellas' }}).
+                  </strong>
                   @if (submitted.comment) {
                     <p style="margin: 0.35rem 0 0">{{ submitted.comment }}</p>
                   }
@@ -234,30 +257,28 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
                 <form class="form-stack" (ngSubmit)="submitReview(item.id)">
                   <fieldset style="border: 0; padding: 0; margin: 0">
-                    <legend style="font-weight: 600; font-size: 0.92rem; margin-bottom: 0.4rem">
-                      Calificación (1 a 5) *
+                    <legend style="font-weight: 600; font-size: 0.92rem; margin-bottom: 0.5rem">
+                      Calificación (estrellas) *
                     </legend>
-                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+                    <div
+                      class="star-rating-group"
+                      role="radiogroup"
+                      aria-label="Calificación en estrellas"
+                    >
                       @for (star of [1, 2, 3, 4, 5]; track star) {
-                        <label
-                          style="
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 0.35rem;
-                            padding: 0.4rem 0.75rem;
-                            border: 1px solid var(--th-border);
-                            border-radius: var(--th-radius-sm);
-                            cursor: pointer;
-                          "
+                        <button
+                          type="button"
+                          role="radio"
+                          class="star-rating-option"
+                          [class.star-rating-option--selected]="reviewRating === star"
+                          [attr.aria-checked]="reviewRating === star"
+                          (click)="reviewRating = star"
                         >
-                          <input
-                            type="radio"
-                            name="reviewRating"
-                            [value]="star"
-                            [(ngModel)]="reviewRating"
-                          />
-                          <span>{{ star }} / 5</span>
-                        </label>
+                          <span class="star-rating-icons" aria-hidden="true">{{
+                            formatStars(star)
+                          }}</span>
+                          <span>{{ star }} {{ star === 1 ? 'estrella' : 'estrellas' }}</span>
+                        </button>
                       }
                     </div>
                   </fieldset>
@@ -318,13 +339,66 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           </div>
         </dialog>
 
+        <dialog #rejectClosureDialog aria-labelledby="reject-closure-title">
+          <h1 id="reject-closure-title" class="page-title" style="font-size: 1.2rem">
+            Reportar pendiente en la reparación
+          </h1>
+          <p style="margin: 0 0 0.85rem; color: var(--th-text-muted)">
+            El servicio volverá al estado <strong>En proceso</strong> y notificaremos al técnico con
+            tu observación.
+          </p>
+          <div class="field" style="margin-bottom: 1rem">
+            <label for="reject-closure-reason">Describe el pendiente (mín. 5 caracteres) *</label>
+            <textarea
+              id="reject-closure-reason"
+              name="rejectClosureReason"
+              rows="3"
+              maxlength="500"
+              class="input-control"
+              placeholder="Ej. Aún presenta una fuga leve al centrifugar."
+              [(ngModel)]="rejectClosureReason"
+            ></textarea>
+          </div>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              autofocus
+              (click)="closeRejectClosureDialog()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="busy() || rejectClosureReason.trim().length < 5"
+              (click)="rejectClosure(item.id)"
+            >
+              {{ busy() ? 'Enviando...' : 'Devolver a En proceso' }}
+            </button>
+          </div>
+        </dialog>
+
         <dialog #cancelDialog aria-labelledby="cancel-repair-title">
           <h1 id="cancel-repair-title" class="page-title" style="font-size: 1.2rem">
-            Cancelar solicitud abierta
+            Cancelar solicitud
           </h1>
-          <p style="margin: 0 0 1.25rem; color: var(--th-text-muted)">
-            Tu solicitud dejará de mostrarse en el tablón de técnicos. ¿Deseas cancelarla?
+          <p style="margin: 0 0 0.85rem; color: var(--th-text-muted)">
+            Tu solicitud quedará cancelada y, si ya tenía técnico asignado, le avisaremos de
+            inmediato.
           </p>
+          <div class="field" style="margin-bottom: 1rem">
+            <label for="cancel-repair-reason">Motivo de cancelación (opcional)</label>
+            <input
+              id="cancel-repair-reason"
+              name="cancelReason"
+              type="text"
+              maxlength="300"
+              class="input-control"
+              placeholder="Ej. Ya no requiero la visita en esta fecha"
+              [(ngModel)]="cancelReason"
+            />
+          </div>
           <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap">
             <button type="button" class="btn btn-secondary" autofocus (click)="closeCancelDialog()">
               Volver
@@ -353,6 +427,8 @@ export class ClientRepairDetailComponent implements OnInit {
 
   private readonly closureDialogRef =
     viewChild<ElementRef<HTMLDialogElement>>('confirmClosureDialog');
+  private readonly rejectDialogRef =
+    viewChild<ElementRef<HTMLDialogElement>>('rejectClosureDialog');
   private readonly cancelDialogRef = viewChild<ElementRef<HTMLDialogElement>>('cancelDialog');
 
   protected readonly loading = signal(true);
@@ -368,6 +444,8 @@ export class ClientRepairDetailComponent implements OnInit {
 
   protected reviewRating = 5;
   protected reviewComment = '';
+  protected rejectClosureReason = '';
+  protected cancelReason = '';
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -418,6 +496,38 @@ export class ClientRepairDetailComponent implements OnInit {
     });
   }
 
+  protected openRejectClosureDialog(): void {
+    this.rejectClosureReason = '';
+    this.rejectDialogRef()?.nativeElement.showModal();
+  }
+
+  protected closeRejectClosureDialog(): void {
+    this.rejectDialogRef()?.nativeElement.close();
+  }
+
+  protected rejectClosure(id: string): void {
+    const reason = this.rejectClosureReason.trim();
+    if (reason.length < 5) {
+      return;
+    }
+
+    this.busy.set(true);
+    this.errorMessage.set(null);
+    this.repairs.rejectClosure(id, reason).subscribe({
+      next: (updated) => {
+        this.busy.set(false);
+        this.repair.set(updated);
+        this.closeRejectClosureDialog();
+        this.feedbackMessage.set('Pendiente enviado. La reparación volvió a En proceso.');
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.closeRejectClosureDialog();
+        this.errorMessage.set(this.auth.extractErrorMessage(err));
+      },
+    });
+  }
+
   protected openCancelDialog(): void {
     this.cancelDialogRef()?.nativeElement.showModal();
   }
@@ -429,7 +539,7 @@ export class ClientRepairDetailComponent implements OnInit {
   protected cancelRepair(id: string): void {
     this.busy.set(true);
     this.errorMessage.set(null);
-    this.repairs.cancel(id).subscribe({
+    this.repairs.cancel(id, this.cancelReason).subscribe({
       next: (updated) => {
         this.busy.set(false);
         this.repair.set(updated);
@@ -500,6 +610,11 @@ export class ClientRepairDetailComponent implements OnInit {
           this.errorMessage.set(this.auth.extractErrorMessage(err));
         },
       });
+  }
+
+  protected formatStars(rating: number): string {
+    const safe = Math.max(1, Math.min(5, Math.round(rating)));
+    return '★'.repeat(safe) + '☆'.repeat(5 - safe);
   }
 
   private loadExistingReview(repairId: string): void {

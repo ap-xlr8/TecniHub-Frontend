@@ -2,20 +2,31 @@ import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angul
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { RealtimeService } from '../../core/services/realtime.service';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-profile-view',
-  imports: [AppShellComponent, RouterLink],
+  imports: [AppShellComponent, RouterLink, UserAvatarComponent],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="profile-heading">
         <div class="page-header-row" style="margin-bottom: 1.25rem">
-          <div>
-            <h1 id="profile-heading" class="page-title">Mi perfil</h1>
-            <p class="page-lead" style="margin: 0">
-              Consulta los datos privados asociados a tu cuenta en TECNIHUB.
-            </p>
+          <div style="display: flex; align-items: center; gap: 1rem">
+            @if (auth.user(); as user) {
+              <app-user-avatar
+                [name]="user.firstName + ' ' + user.lastName"
+                [avatarUrl]="user.avatarUrl"
+                size="lg"
+              />
+            }
+            <div>
+              <h1 id="profile-heading" class="page-title">Mi perfil</h1>
+              <p class="page-lead" style="margin: 0">
+                Consulta los datos privados asociados a tu cuenta en TECNIHUB.
+              </p>
+            </div>
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
             @if (auth.user()?.role === 'Technician' && auth.user()?.id; as techId) {
@@ -159,6 +170,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 export class ProfileViewComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly profileService = inject(ProfileService);
+  private readonly realtime = inject(RealtimeService);
   private readonly router = inject(Router);
   private readonly dialogRef = viewChild<ElementRef<HTMLDialogElement>>('deleteDialog');
 
@@ -197,6 +209,7 @@ export class ProfileViewComponent implements OnInit {
       next: () => {
         this.deleting.set(false);
         this.closeDeleteDialog();
+        void this.realtime.disconnect();
         void this.router.navigateByUrl('/iniciar-sesion');
       },
       error: (err: unknown) => {

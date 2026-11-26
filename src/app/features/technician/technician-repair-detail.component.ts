@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -7,6 +7,8 @@ import { OverlappingAppointmentDto, RepairDetailDto } from '../../core/models/op
 import { ChatService } from '../../core/services/chat.service';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageGalleryComponent } from '../../shared/components/image-gallery.component';
+import { RepairTimelineComponent } from '../../shared/components/repair-timeline.component';
+import { ScheduleAgendaPickerComponent } from '../../shared/components/schedule-agenda-picker.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
@@ -18,6 +20,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
     FormsModule,
     StatusBadgeComponent,
     ImageGalleryComponent,
+    RepairTimelineComponent,
+    ScheduleAgendaPickerComponent,
     DatePipe,
   ],
   template: `
@@ -78,7 +82,11 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               de 60 minutos con:
               <ul style="margin: 0.35rem 0 0; padding-left: 1.2rem">
                 @for (ov of overlapWarning(); track ov.repairRequestId) {
-                  <li>{{ ov.applianceName }} ({{ ov.scheduledStartAt | date: 'medium' }})</li>
+                  <li>
+                    {{ ov.applianceName }} ({{
+                      ov.scheduledStartAt | date: "dd/MM/yyyy HH:mm 'hrs'"
+                    }})
+                  </li>
                 }
               </ul>
             </div>
@@ -89,6 +97,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               {{ errorMessage() }}
             </div>
           }
+
+          <app-repair-timeline [repair]="item" />
 
           <dl class="detail-dl" style="margin-bottom: 1.25rem">
             <div>
@@ -145,7 +155,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             @if (item.scheduledStartAt) {
               <div>
                 <dt>Cita programada en tu itinerario</dt>
-                <dd>{{ item.scheduledStartAt | date: 'medium' }}</dd>
+                <dd>{{ item.scheduledStartAt | date: "dd/MM/yyyy HH:mm 'hrs'" }}</dd>
               </div>
             }
           </dl>
@@ -177,39 +187,129 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           ) {
             <div class="form-stack">
               <h2 style="margin: 0; font-size: 1.05rem">Programar en tu itinerario</h2>
-              <form class="toolbar-row" (ngSubmit)="scheduleRepair(item.id)">
+              <form class="form-stack" (ngSubmit)="scheduleRepair(item.id)">
                 <div class="field">
-                  <label for="schedule-datetime">Fecha y hora de atención *</label>
-                  <input
-                    id="schedule-datetime"
-                    name="scheduleInput"
-                    type="datetime-local"
-                    class="input-control"
-                    [(ngModel)]="scheduleInput"
-                    required
+                  <span class="field-label">Fecha y hora de atención (formato 24 hrs) *</span>
+                  <app-schedule-agenda-picker
+                    [value]="scheduleInput"
+                    (valueChange)="scheduleInput = $event"
                   />
                 </div>
-                <button type="submit" class="btn btn-primary" [disabled]="busy() || !scheduleInput">
-                  {{
-                    busy()
-                      ? 'Guardando...'
-                      : item.scheduledStartAt
-                        ? 'Reprogramar cita'
-                        : 'Guardar en itinerario'
-                  }}
-                </button>
+                <div>
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    [disabled]="busy() || !scheduleInput"
+                  >
+                    {{
+                      busy()
+                        ? 'Guardando...'
+                        : item.scheduledStartAt
+                          ? 'Reprogramar cita'
+                          : 'Guardar en itinerario'
+                    }}
+                  </button>
+                </div>
               </form>
 
-              <div style="padding-top: 0.5rem">
+              <hr style="border: 0; border-top: 1px solid var(--th-border); margin: 0.35rem 0" />
+
+              <h2 style="margin: 0; font-size: 1.05rem">Seguimiento presencial de visita</h2>
+              <form class="form-stack" (ngSubmit)="markOnTheWay(item.id)">
+                <div class="field" style="max-inline-size: 16rem">
+                  <label for="eta-minutes">Tiempo estimado de llegada (min)</label>
+                  <input
+                    id="eta-minutes"
+                    name="etaMinutes"
+                    type="number"
+                    min="5"
+                    max="180"
+                    class="input-control"
+                    placeholder="Ej. 20"
+                    [(ngModel)]="etaMinutes"
+                  />
+                </div>
+                <div class="visit-actions-row">
+                  <button
+                    type="submit"
+                    class="btn btn-primary visit-action-btn"
+                    [disabled]="busy()"
+                  >
+                    Voy en camino
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-teal visit-action-btn"
+                    [disabled]="busy()"
+                    (click)="markArrived(item.id)"
+                  >
+                    Ya llegué al domicilio
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger visit-action-btn"
+                    [disabled]="busy()"
+                    (click)="openReleaseDialog()"
+                  >
+                    Liberar asignación
+                  </button>
+                </div>
+              </form>
+            </div>
+          }
+
+          @if (isAssignedToMe(item) && (item.status === 'OnTheWay' || item.status === 'Arrived')) {
+            <div class="form-stack">
+              <h2 style="margin: 0; font-size: 1.05rem">Confirmar llegada e iniciar reparación</h2>
+
+              @if (item.status === 'OnTheWay') {
+                <div class="visit-actions-row">
+                  <button
+                    type="button"
+                    class="btn btn-primary visit-action-btn"
+                    [disabled]="busy()"
+                    (click)="markArrived(item.id)"
+                  >
+                    Ya llegué al domicilio
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger visit-action-btn"
+                    [disabled]="busy()"
+                    (click)="openReleaseDialog()"
+                  >
+                    Liberar asignación
+                  </button>
+                </div>
+              }
+
+              <form class="toolbar-row" (ngSubmit)="startWork(item.id)">
+                @if (item.requiresArrivalPin) {
+                  <div class="field" style="max-inline-size: 14rem">
+                    <label for="arrival-pin-input">Código PIN del cliente (4 dígitos) *</label>
+                    <input
+                      id="arrival-pin-input"
+                      name="arrivalPinInput"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="4"
+                      class="input-control"
+                      placeholder="Ej. 4821"
+                      [(ngModel)]="arrivalPinInput"
+                      required
+                    />
+                  </div>
+                }
                 <button
-                  type="button"
+                  type="submit"
                   class="btn btn-teal"
-                  [disabled]="busy()"
-                  (click)="startWork(item.id)"
+                  [disabled]="
+                    busy() || (item.requiresArrivalPin && arrivalPinInput.trim().length !== 4)
+                  "
                 >
-                  Iniciar reparación
+                  {{ busy() ? 'Validando...' : 'Iniciar reparación' }}
                 </button>
-              </div>
+              </form>
             </div>
           }
 
@@ -246,10 +346,50 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           @if (item.status === 'Completed') {
             <div class="alert alert-success">
               Servicio confirmado como <strong>Completado</strong> por el cliente el
-              {{ item.completedAt | date: 'medium' }}.
+              {{ item.completedAt | date: "dd/MM/yyyy HH:mm 'hrs'" }}.
             </div>
           }
         </section>
+
+        <dialog #releaseDialog aria-labelledby="release-repair-title">
+          <h1 id="release-repair-title" class="page-title" style="font-size: 1.2rem">
+            Liberar asignación de servicio
+          </h1>
+          <p style="margin: 0 0 0.85rem; color: var(--th-text-muted)">
+            La solicitud volverá al tablón para que otro técnico pueda atenderla y notificaremos al
+            cliente.
+          </p>
+          <div class="field" style="margin-bottom: 1rem">
+            <label for="release-reason">Motivo (mín. 5 caracteres) *</label>
+            <textarea
+              id="release-reason"
+              name="releaseReason"
+              rows="3"
+              maxlength="300"
+              class="input-control"
+              placeholder="Ej. Surge imprevisto en ruta y no puedo cubrir el horario acordado."
+              [(ngModel)]="releaseReason"
+            ></textarea>
+          </div>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              autofocus
+              (click)="closeReleaseDialog()"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              [disabled]="busy() || releaseReason.trim().length < 5"
+              (click)="confirmRelease(item.id)"
+            >
+              {{ busy() ? 'Liberando...' : 'Sí, liberar asignación' }}
+            </button>
+          </div>
+        </dialog>
       }
     </app-shell>
   `,
@@ -260,6 +400,7 @@ export class TechnicianRepairDetailComponent implements OnInit {
   private readonly repairs = inject(RepairsService);
   private readonly chat = inject(ChatService);
   private readonly auth = inject(AuthService);
+  private readonly releaseDialogRef = viewChild<ElementRef<HTMLDialogElement>>('releaseDialog');
 
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
@@ -270,7 +411,10 @@ export class TechnicianRepairDetailComponent implements OnInit {
   protected readonly overlapWarning = signal<OverlappingAppointmentDto[]>([]);
 
   protected scheduleInput = '';
+  protected etaMinutes: number | null = 20;
+  protected arrivalPinInput = '';
   protected closureNotes = '';
+  protected releaseReason = '';
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -340,14 +484,51 @@ export class TechnicianRepairDetailComponent implements OnInit {
     });
   }
 
-  protected startWork(id: string): void {
+  protected markOnTheWay(id: string): void {
     this.busy.set(true);
     this.errorMessage.set(null);
-    this.repairs.startWork(id).subscribe({
+    this.repairs.markOnTheWay(id, this.etaMinutes ? Number(this.etaMinutes) : null).subscribe({
       next: (updated) => {
         this.busy.set(false);
         this.repair.set(updated);
-        this.feedbackMessage.set('Servicio marcado En proceso.');
+        this.feedbackMessage.set(
+          'Avisamos al cliente que vas en camino y generamos su código PIN de llegada.',
+        );
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.errorMessage.set(this.auth.extractErrorMessage(err));
+      },
+    });
+  }
+
+  protected markArrived(id: string): void {
+    this.busy.set(true);
+    this.errorMessage.set(null);
+    this.repairs.markArrived(id).subscribe({
+      next: (updated) => {
+        this.busy.set(false);
+        this.repair.set(updated);
+        this.feedbackMessage.set(
+          'Llegada confirmada. Solicita al cliente su código PIN de 4 dígitos para iniciar la reparación.',
+        );
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.errorMessage.set(this.auth.extractErrorMessage(err));
+      },
+    });
+  }
+
+  protected startWork(id: string): void {
+    this.busy.set(true);
+    this.errorMessage.set(null);
+    this.repairs.startWork(id, this.arrivalPinInput).subscribe({
+      next: (updated) => {
+        this.busy.set(false);
+        this.arrivalPinInput = '';
+        this.repair.set(updated);
+        this.feedbackMessage.set('Llegada verificada. Servicio marcado En proceso.');
       },
       error: (err: unknown) => {
         this.busy.set(false);
@@ -369,6 +550,36 @@ export class TechnicianRepairDetailComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.busy.set(false);
+        this.errorMessage.set(this.auth.extractErrorMessage(err));
+      },
+    });
+  }
+
+  protected openReleaseDialog(): void {
+    this.releaseReason = '';
+    this.releaseDialogRef()?.nativeElement.showModal();
+  }
+
+  protected closeReleaseDialog(): void {
+    this.releaseDialogRef()?.nativeElement.close();
+  }
+
+  protected confirmRelease(id: string): void {
+    if (this.releaseReason.trim().length < 5) {
+      return;
+    }
+
+    this.busy.set(true);
+    this.errorMessage.set(null);
+    this.repairs.releaseAssignment(id, this.releaseReason.trim()).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.closeReleaseDialog();
+        void this.router.navigateByUrl('/tecnico');
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.closeReleaseDialog();
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
