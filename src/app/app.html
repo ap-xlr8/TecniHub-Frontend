@@ -1,1 +1,24 @@
+@if (globalErrors.error(); as err) {
+  <div class="global-error-banner" role="alert">
+    <div class="global-error-banner-inner">
+      <div>
+        <strong>{{ err.title }}:</strong> {{ err.message }}
+      </div>
+      <div class="global-error-banner-actions">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="reloadPage()">
+          Reintentar
+        </button>
+        <a routerLink="/error-servidor" class="btn btn-secondary btn-sm">Ver estado</a>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          aria-label="Cerrar aviso de error"
+          (click)="globalErrors.dismiss()"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+}
 <router-outlet />

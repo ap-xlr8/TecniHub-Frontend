@@ -2,7 +2,7 @@
 
 ## Requisitos e instalación
 
-Node.js 24.20.0 (`.nvmrc`) y npm. Desde la raíz:
+Node.js 24.22.3 (`.nvmrc`) y npm. Desde la raíz:
 
 ```powershell
 npm ci

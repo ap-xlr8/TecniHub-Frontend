@@ -4,7 +4,7 @@ Base Angular 22 para la PWA TECNIHUB. El proyecto contiene routing, Service Work
 
 ## Requisitos
 
-- Node.js 24 LTS (`.nvmrc`, actualmente 24.20.0) y npm.
+- Node.js 24 LTS (`.nvmrc`, actualmente 24.22.3) y npm.
 - La versión Angular CLI y las dependencias están fijadas por `package-lock.json` (Angular 22.2.x).
 
 ## Instalar y ejecutar

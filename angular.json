@@ -71,7 +71,8 @@
               "buildTarget": "TECNIHUB-Frontend:build:production"
             },
             "development": {
-              "buildTarget": "TECNIHUB-Frontend:build:development"
+              "buildTarget": "TECNIHUB-Frontend:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
