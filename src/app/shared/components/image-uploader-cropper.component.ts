@@ -24,7 +24,10 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024;
         <label [for]="inputId()">
           {{ label() }} ({{ imageUrls().length }}/{{ maxImages() }})
         </label>
-        <span class="field-hint">Opcional · JPG, PNG o WebP · Máx. 5 MB</span>
+        <span class="field-hint">
+          {{ minImages() > 0 ? 'Obligatorio (mín. ' + minImages() + ')' : 'Opcional' }} · JPG, PNG o
+          WebP · Máx. 5 MB
+        </span>
       </div>
 
       @if (errorMessage()) {
@@ -108,11 +111,17 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024;
         Recortar imagen antes de subir
       </h1>
       <p class="field-hint" style="margin-bottom: 0.9rem">
-        Ajusta el acercamiento y encuadre (4:3). La imagen se validará en el servidor antes de
-        guardarse.
+        Ajusta el acercamiento y encuadre ({{ squareCrop() ? '1:1' : '4:3' }}). La imagen se
+        validará en el servidor antes de guardarse.
       </p>
 
-      <canvas #cropCanvas width="800" height="600" class="cropper-canvas"></canvas>
+      <canvas
+        #cropCanvas
+        [attr.width]="squareCrop() ? 600 : 800"
+        [attr.height]="600"
+        class="cropper-canvas"
+        [class.cropper-canvas--square]="squareCrop()"
+      ></canvas>
 
       <div class="form-stack" style="margin-top: 1rem">
         <div class="field">
@@ -190,7 +199,9 @@ export class ImageUploaderCropperComponent {
 
   readonly label = input('Fotografías');
   readonly inputId = input('image-upload-input');
-  readonly maxImages = input(5);
+  readonly minImages = input(0);
+  readonly maxImages = input(6);
+  readonly squareCrop = input(false);
   readonly imageUrls = input<string[]>([]);
   readonly imageUrlsChange = output<string[]>();
 

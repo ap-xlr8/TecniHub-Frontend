@@ -4,12 +4,13 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ItineraryItemDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
+import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-technician-itinerary',
-  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, DatePipe],
+  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, ImageCarouselComponent, DatePipe],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="itinerary-heading">
@@ -69,6 +70,12 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             @for (item of visibleItems(); track item.id) {
               <article class="item-card">
                 <div style="display: grid; gap: 0.55rem">
+                  <app-image-carousel
+                    [images]="item.imageUrls"
+                    [fallbackThumbnail]="item.thumbnailUrl"
+                    [altPrefix]="'Fotografía de ' + item.applianceName"
+                  />
+
                   <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
                   >
@@ -96,7 +103,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                     <span>
                       <strong>Cita programada:</strong>
                       @if (item.scheduledStartAt) {
-                        {{ item.scheduledStartAt | date: 'medium' }}
+                        {{ item.scheduledStartAt | date: "dd/MM/yyyy HH:mm 'hrs'" }}
                       } @else {
                         Sin fecha programada aún (Preferencia: {{ item.preferredDate }} ·
                         {{ item.preferredTimeSlot }})

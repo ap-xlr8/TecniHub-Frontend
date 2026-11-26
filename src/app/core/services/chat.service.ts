@@ -27,6 +27,10 @@ export class ChatService {
       .pipe(tap((res) => this.unreadCountSignal.set(res.unreadCount)));
   }
 
+  bumpUnreadCount(): void {
+    this.unreadCountSignal.update((c) => c + 1);
+  }
+
   openRepairConversation(repairId: string): Observable<ChatConversationSummaryDto> {
     return this.http.post<ChatConversationSummaryDto>(
       `${this.apiBase}/conversations/repair/${encodeURIComponent(repairId)}`,
@@ -52,10 +56,14 @@ export class ChatService {
     );
   }
 
-  sendMessage(conversationId: string, body: string): Observable<ChatMessageDto> {
+  sendMessage(
+    conversationId: string,
+    body: string | null,
+    imageUrl?: string | null,
+  ): Observable<ChatMessageDto> {
     return this.http.post<ChatMessageDto>(
       `${this.apiBase}/conversations/${encodeURIComponent(conversationId)}/messages`,
-      { body },
+      { body: body ?? '', imageUrl: imageUrl ?? null },
     );
   }
 }

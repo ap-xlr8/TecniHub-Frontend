@@ -4,11 +4,12 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { PublicTechnicianProfileDto } from '../../core/models/operations.models';
 import { PublicProfileService } from '../../core/services/public-profile.service';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-technician-public-profile',
-  imports: [AppShellComponent, DatePipe, DecimalPipe],
+  imports: [AppShellComponent, DatePipe, DecimalPipe, UserAvatarComponent],
   template: `
     <app-shell>
       @if (loading()) {
@@ -28,12 +29,15 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
       } @else if (profile(); as tech) {
         <section class="panel-card" aria-labelledby="public-tech-heading">
           <div class="page-header-row" style="margin-bottom: 1.25rem">
-            <div>
-              <h1 id="public-tech-heading" class="page-title">{{ tech.displayName }}</h1>
-              <p class="page-lead" style="margin: 0">
-                Perfil público de técnico · Miembro desde
-                {{ tech.memberSinceUtc | date: 'MM/yyyy' }}
-              </p>
+            <div style="display: flex; align-items: center; gap: 1rem">
+              <app-user-avatar [name]="tech.displayName" [avatarUrl]="tech.avatarUrl" size="lg" />
+              <div>
+                <h1 id="public-tech-heading" class="page-title">{{ tech.displayName }}</h1>
+                <p class="page-lead" style="margin: 0">
+                  Perfil público de técnico · Miembro desde
+                  {{ tech.memberSinceUtc | date: 'MM/yyyy' }}
+                </p>
+              </div>
             </div>
             <button type="button" class="btn btn-secondary" (click)="goBack()">Volver</button>
           </div>
@@ -65,7 +69,10 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               <dt>Reputación verificada</dt>
               <dd>
                 @if (tech.reviewCount > 0 && tech.averageRating !== null) {
-                  <strong>{{ tech.averageRating | number: '1.1-1' }} / 5.0</strong>
+                  <strong>
+                    <span class="star-display" aria-hidden="true">★</span>
+                    {{ tech.averageRating | number: '1.1-1' }} estrellas
+                  </strong>
                   ({{ tech.reviewCount }} reseña{{ tech.reviewCount === 1 ? '' : 's' }})
                 } @else {
                   <span class="muted-value">Aún no existen reseñas</span>
@@ -106,7 +113,13 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                       flex-wrap: wrap;
                     "
                   >
-                    <strong>{{ review.rating }} / 5 · {{ review.applianceName }}</strong>
+                    <strong>
+                      <span class="star-display" aria-hidden="true">{{
+                        formatStars(review.rating)
+                      }}</span>
+                      {{ review.rating }} {{ review.rating === 1 ? 'estrella' : 'estrellas' }} ·
+                      {{ review.applianceName }}
+                    </strong>
                     <span class="field-hint">
                       {{ review.reviewerDisplayName }} · {{ review.createdAt | date: 'mediumDate' }}
                     </span>
@@ -155,6 +168,11 @@ export class TechnicianPublicProfileComponent implements OnInit {
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
+  }
+
+  protected formatStars(rating: number): string {
+    const safe = Math.max(1, Math.min(5, Math.round(rating)));
+    return '★'.repeat(safe) + '☆'.repeat(5 - safe);
   }
 
   protected goBack(): void {

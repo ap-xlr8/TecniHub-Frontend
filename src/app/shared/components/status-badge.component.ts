@@ -20,6 +20,9 @@ export class StatusBadgeComponent {
       case 'Assigned':
       case 'Scheduled':
         return 'status-badge--assigned';
+      case 'OnTheWay':
+      case 'Arrived':
+        return 'status-badge--transit';
       case 'InProgress':
         return 'status-badge--progress';
       case 'ClosureRequested':

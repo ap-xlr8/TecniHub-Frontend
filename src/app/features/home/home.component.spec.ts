@@ -17,9 +17,10 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('h1')?.textContent).toContain('reparaciones');
+    expect(compiled.querySelector('h1')?.textContent?.toLowerCase()).toContain('reparaciones');
     expect(compiled.querySelector('a[href="/iniciar-sesion"]')).toBeTruthy();
     expect(compiled.querySelector('a[href="/registro/cliente"]')).toBeTruthy();
     expect(compiled.querySelector('a[href="/registro/tecnico"]')).toBeTruthy();
+    expect(compiled.querySelector('img[src="images/home-hero-technician.jpg"]')).toBeTruthy();
   });
 });

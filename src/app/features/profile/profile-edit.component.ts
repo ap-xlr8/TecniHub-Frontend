@@ -3,11 +3,19 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { ImageUploaderCropperComponent } from '../../shared/components/image-uploader-cropper.component';
+import { UserAvatarComponent } from '../../shared/components/user-avatar.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-profile-edit',
-  imports: [AppShellComponent, ReactiveFormsModule, RouterLink],
+  imports: [
+    AppShellComponent,
+    ReactiveFormsModule,
+    RouterLink,
+    ImageUploaderCropperComponent,
+    UserAvatarComponent,
+  ],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="edit-profile-heading">
@@ -29,6 +37,26 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
         }
 
         <form class="form-stack" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap">
+            <app-user-avatar
+              [name]="
+                (form.controls.firstName.value + ' ' + form.controls.lastName.value).trim() || 'TH'
+              "
+              [avatarUrl]="avatarUrls()[0] ?? null"
+              size="lg"
+            />
+            <div style="flex: 1 1 16rem">
+              <app-image-uploader-cropper
+                inputId="profile-avatar-upload"
+                label="Fotografía de perfil"
+                [maxImages]="1"
+                [squareCrop]="true"
+                [imageUrls]="avatarUrls()"
+                (imageUrlsChange)="avatarUrls.set($event)"
+              />
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="field">
               <label for="edit-first-name">Nombre *</label>
@@ -198,6 +226,7 @@ export class ProfileEditComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly isTechnician = signal(false);
+  protected readonly avatarUrls = signal<string[]>([]);
 
   protected readonly form = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.maxLength(80)]],
@@ -232,6 +261,7 @@ export class ProfileEditComponent implements OnInit {
           businessName: user.technicianProfile?.businessName ?? '',
           publicRegion: user.publicRegion ?? '',
         });
+        this.avatarUrls.set(user.avatarUrl ? [user.avatarUrl] : []);
         this.form.updateValueAndValidity();
       },
       error: (err: unknown) => {
@@ -266,6 +296,7 @@ export class ProfileEditComponent implements OnInit {
         serviceZone: this.isTechnician() ? raw.serviceZone.trim() : null,
         businessName: this.isTechnician() ? raw.businessName.trim() || null : null,
         publicRegion: raw.publicRegion.trim() || null,
+        avatarUrl: this.avatarUrls()[0] ?? null,
       })
       .subscribe({
         next: () => {

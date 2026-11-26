@@ -307,6 +307,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           <app-image-uploader-cropper
             inputId="repair-photos"
             label="3. Fotografías del equipo o falla"
+            [minImages]="1"
+            [maxImages]="6"
             [imageUrls]="imageUrls()"
             (imageUrlsChange)="imageUrls.set($event)"
           />
@@ -417,6 +419,13 @@ export class RepairCreateComponent {
     this.form.markAllAsTouched();
     if (this.form.invalid) {
       this.errorMessage.set('Completa todos los campos obligatorios antes de publicar.');
+      return;
+    }
+
+    if (this.imageUrls().length < 1 || this.imageUrls().length > 6) {
+      this.errorMessage.set(
+        'Adjunta al menos 1 fotografía de referencia (máximo 6) antes de publicar.',
+      );
       return;
     }
 

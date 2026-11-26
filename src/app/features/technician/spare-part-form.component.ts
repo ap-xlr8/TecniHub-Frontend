@@ -185,6 +185,8 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           <app-image-uploader-cropper
             inputId="spare-part-photos"
             label="Fotografías de la refacción"
+            [minImages]="1"
+            [maxImages]="6"
             [imageUrls]="imageUrls()"
             (imageUrlsChange)="imageUrls.set($event)"
           />
@@ -279,6 +281,13 @@ export class SparePartFormComponent implements OnInit {
 
     if (this.form.invalid) {
       this.errorMessage.set('Revisa los campos obligatorios antes de publicar.');
+      return;
+    }
+
+    if (this.imageUrls().length < 1 || this.imageUrls().length > 6) {
+      this.errorMessage.set(
+        'Adjunta al menos 1 fotografía de la refacción (máximo 6) antes de publicar.',
+      );
       return;
     }
 

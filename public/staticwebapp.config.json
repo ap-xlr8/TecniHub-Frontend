@@ -1,0 +1,25 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/images/*",
+      "/icons/*",
+      "/favicon.ico",
+      "/manifest.webmanifest",
+      "/ngsw.json",
+      "/ngsw-worker.js",
+      "/safety-worker.js",
+      "/worker-basic.min.js",
+      "/*.{css,js,json,ico,png,jpg,jpeg,webp,svg,woff,woff2}"
+    ]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
+  },
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  }
+}

@@ -1,3 +1,13 @@
+<div
+  class="route-progress-bar"
+  [class.route-progress-bar--active]="loadingState.isLoading()"
+  role="progressbar"
+  aria-label="Cargando contenido"
+  [attr.aria-hidden]="!loadingState.isLoading()"
+>
+  <span class="route-progress-bar-fill"></span>
+</div>
+
 @if (globalErrors.error(); as err) {
   <div class="global-error-banner" role="alert">
     <div class="global-error-banner-inner">

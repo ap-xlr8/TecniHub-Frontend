@@ -7,6 +7,7 @@ export interface UpdateOwnProfilePayload {
   serviceZone?: string | null;
   businessName?: string | null;
   publicRegion?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface PostalCodeLookupDto {
@@ -44,7 +45,15 @@ export interface ImageItemDto {
 }
 
 export type RepairStatusCode =
-  'Open' | 'Assigned' | 'Scheduled' | 'InProgress' | 'ClosureRequested' | 'Completed' | 'Cancelled';
+  | 'Open'
+  | 'Assigned'
+  | 'Scheduled'
+  | 'OnTheWay'
+  | 'Arrived'
+  | 'InProgress'
+  | 'ClosureRequested'
+  | 'Completed'
+  | 'Cancelled';
 
 export interface OpenRepairBoardItemDto {
   id: string;
@@ -59,6 +68,7 @@ export interface OpenRepairBoardItemDto {
   imageCount: number;
   thumbnailUrl: string | null;
   createdAt: string;
+  imageUrls?: string[];
 }
 
 export interface ClientRepairSummaryDto {
@@ -78,6 +88,7 @@ export interface ClientRepairSummaryDto {
   imageCount: number;
   thumbnailUrl: string | null;
   createdAt: string;
+  imageUrls?: string[];
 }
 
 export interface ItineraryItemDto {
@@ -94,6 +105,9 @@ export interface ItineraryItemDto {
   statusLabel: string;
   hasScheduleOverlap: boolean;
   assignedAt: string;
+  imageCount: number;
+  thumbnailUrl: string | null;
+  imageUrls?: string[];
 }
 
 export interface RepairDetailDto {
@@ -122,6 +136,15 @@ export interface RepairDetailDto {
   updatedAt: string;
   images: ImageItemDto[];
   conversationId: string | null;
+  enRouteAt?: string | null;
+  estimatedArrivalMinutes?: number | null;
+  arrivedAt?: string | null;
+  clientArrivalPin?: string | null;
+  requiresArrivalPin?: boolean;
+  closureRejectionReason?: string | null;
+  cancellationReason?: string | null;
+  assignedTechnicianAvatarUrl?: string | null;
+  clientAvatarUrl?: string | null;
 }
 
 export interface OverlappingAppointmentDto {
@@ -176,6 +199,7 @@ export interface SparePartSummaryDto {
   imageCount: number;
   thumbnailUrl: string | null;
   createdAt: string;
+  imageUrls?: string[];
 }
 
 export interface SparePartDetailDto {
@@ -202,6 +226,7 @@ export interface SparePartDetailDto {
   updatedAt: string;
   images: ImageItemDto[];
   isOwner: boolean;
+  technicianAvatarUrl?: string | null;
 }
 
 export interface UpsertSparePartPayload {
@@ -231,6 +256,7 @@ export interface ChatConversationSummaryDto {
   lastMessageAt: string | null;
   unreadCount: number;
   isReadOnly: boolean;
+  counterpartAvatarUrl?: string | null;
 }
 
 export interface ChatMessageDto {
@@ -242,6 +268,7 @@ export interface ChatMessageDto {
   body: string;
   sentAt: string;
   readAt: string | null;
+  imageUrl?: string | null;
 }
 
 export interface ChatThreadDto {
@@ -275,6 +302,7 @@ export interface PublicTechnicianProfileDto {
   reviewCount: number;
   averageRating: number | null;
   reviews: PublicReviewItemDto[];
+  avatarUrl?: string | null;
 }
 
 export interface PublicClientProfileDto {
@@ -283,9 +311,31 @@ export interface PublicClientProfileDto {
   publicRegion: string | null;
   memberSinceUtc: string;
   completedServicesCount: number;
+  avatarUrl?: string | null;
 }
 
 export interface CreateServiceReviewPayload {
   rating: number;
   comment: string | null;
+}
+
+export interface UserNotificationDto {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  actionUrl: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationListResponse {
+  unreadCount: number;
+  items: UserNotificationDto[];
+}
+
+export interface VapidPublicKeyResponse {
+  enabled: boolean;
+  publicKey: string | null;
 }

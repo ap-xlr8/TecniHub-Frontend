@@ -5,13 +5,20 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { SparePartSummaryDto } from '../../core/models/operations.models';
 import { SparePartsService } from '../../core/services/spare-parts.service';
-import { FALLBACK_IMAGE_DATA_URI } from '../../shared/components/image-uploader-cropper.component';
+import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-spare-parts-board',
-  imports: [AppShellComponent, RouterLink, FormsModule, StatusBadgeComponent, CurrencyPipe],
+  imports: [
+    AppShellComponent,
+    RouterLink,
+    FormsModule,
+    StatusBadgeComponent,
+    ImageCarouselComponent,
+    CurrencyPipe,
+  ],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="spare-board-heading">
@@ -60,7 +67,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                 [(ngModel)]="search"
               />
             </div>
-            <div class="field" style="max-inline-size: 13rem">
+            <div class="field" style="max-inline-size: 11rem">
               <label for="sp-modality">Modalidad</label>
               <select id="sp-modality" name="modality" class="input-control" [(ngModel)]="modality">
                 <option value="">Todas</option>
@@ -68,6 +75,44 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                 <option value="Exchange">Intercambio</option>
                 <option value="SaleOrExchange">Venta o intercambio</option>
               </select>
+            </div>
+            <div class="field" style="max-inline-size: 10rem">
+              <label for="sp-condition-filter">Condición</label>
+              <select
+                id="sp-condition-filter"
+                name="condition"
+                class="input-control"
+                [(ngModel)]="condition"
+              >
+                <option value="">Todas</option>
+                <option value="New">Nueva</option>
+                <option value="Used">Usada</option>
+                <option value="Refurbished">Reacondicionada</option>
+              </select>
+            </div>
+            <div class="field" style="max-inline-size: 8.5rem">
+              <label for="sp-min-price">Mín. MXN</label>
+              <input
+                id="sp-min-price"
+                name="minPrice"
+                type="number"
+                min="0"
+                class="input-control"
+                placeholder="0"
+                [(ngModel)]="minPrice"
+              />
+            </div>
+            <div class="field" style="max-inline-size: 8.5rem">
+              <label for="sp-max-price">Máx. MXN</label>
+              <input
+                id="sp-max-price"
+                name="maxPrice"
+                type="number"
+                min="0"
+                class="input-control"
+                placeholder="5000"
+                [(ngModel)]="maxPrice"
+              />
             </div>
             <button type="submit" class="btn btn-primary">Filtrar</button>
           </form>
@@ -105,15 +150,11 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           @for (part of items(); track part.id) {
             <article class="item-card">
               <div style="display: grid; gap: 0.6rem">
-                @if (part.thumbnailUrl) {
-                  <img
-                    class="item-card-thumb"
-                    [src]="part.thumbnailUrl"
-                    [alt]="'Foto de ' + part.title"
-                    loading="lazy"
-                    (error)="onImgError($event)"
-                  />
-                }
+                <app-image-carousel
+                  [images]="part.imageUrls"
+                  [fallbackThumbnail]="part.thumbnailUrl"
+                  [altPrefix]="'Foto de ' + part.title"
+                />
 
                 <div
                   style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
@@ -164,6 +205,9 @@ export class SparePartsBoardComponent implements OnInit {
 
   protected search = '';
   protected modality = '';
+  protected condition = '';
+  protected minPrice: number | null = null;
+  protected maxPrice: number | null = null;
 
   ngOnInit(): void {
     this.loadCurrentTab();
@@ -180,7 +224,13 @@ export class SparePartsBoardComponent implements OnInit {
 
     const request$ =
       this.tab() === 'board'
-        ? this.spareParts.getAvailable({ search: this.search, modality: this.modality })
+        ? this.spareParts.getAvailable({
+            search: this.search,
+            modality: this.modality,
+            condition: this.condition,
+            minPrice: this.minPrice,
+            maxPrice: this.maxPrice,
+          })
         : this.spareParts.getMine();
 
     request$.subscribe({
@@ -193,12 +243,5 @@ export class SparePartsBoardComponent implements OnInit {
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
-  }
-
-  protected onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (img.src !== FALLBACK_IMAGE_DATA_URI) {
-      img.src = FALLBACK_IMAGE_DATA_URI;
-    }
   }
 }

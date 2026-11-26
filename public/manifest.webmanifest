@@ -1,6 +1,9 @@
 {
   "name": "TECNIHUB",
   "short_name": "TECNIHUB",
+  "description": "Plataforma PWA para conectar clientes con técnicos de reparación y refacciones.",
+  "theme_color": "#0f3d6e",
+  "background_color": "#f4f7fb",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",

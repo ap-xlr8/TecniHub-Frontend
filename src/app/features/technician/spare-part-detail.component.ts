@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { SparePartDetailDto } from '../../core/models/operations.models';
@@ -64,6 +64,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
                   (click)="toggleAvailability(item)"
                 >
                   {{ item.isAvailable ? 'Marcar como no disponible' : 'Marcar como disponible' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  [disabled]="busy()"
+                  (click)="openDeleteDialog()"
+                >
+                  Eliminar
                 </button>
               }
               <a routerLink="/tecnico/refacciones" class="btn btn-secondary btn-sm">Volver</a>
@@ -166,6 +174,29 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             }
           </section>
         </section>
+
+        <dialog #deletePartDialog aria-labelledby="delete-part-title">
+          <h1 id="delete-part-title" class="page-title" style="font-size: 1.2rem">
+            Eliminar publicación de refacción
+          </h1>
+          <p style="margin: 0 0 1.25rem; color: var(--th-text-muted)">
+            La refacción saldrá del tablón de forma definitiva conservando el registro de auditoría.
+            ¿Deseas eliminarla?
+          </p>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap">
+            <button type="button" class="btn btn-secondary" autofocus (click)="closeDeleteDialog()">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              [disabled]="busy()"
+              (click)="confirmDelete(item.id)"
+            >
+              {{ busy() ? 'Eliminando...' : 'Sí, eliminar publicación' }}
+            </button>
+          </div>
+        </dialog>
       }
     </app-shell>
   `,
@@ -176,6 +207,7 @@ export class SparePartDetailComponent implements OnInit {
   private readonly spareParts = inject(SparePartsService);
   private readonly chat = inject(ChatService);
   private readonly auth = inject(AuthService);
+  private readonly deleteDialogRef = viewChild<ElementRef<HTMLDialogElement>>('deletePartDialog');
 
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
@@ -219,6 +251,31 @@ export class SparePartDetailComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.busy.set(false);
+        this.errorMessage.set(this.auth.extractErrorMessage(err));
+      },
+    });
+  }
+
+  protected openDeleteDialog(): void {
+    this.deleteDialogRef()?.nativeElement.showModal();
+  }
+
+  protected closeDeleteDialog(): void {
+    this.deleteDialogRef()?.nativeElement.close();
+  }
+
+  protected confirmDelete(sparePartId: string): void {
+    this.busy.set(true);
+    this.errorMessage.set(null);
+    this.spareParts.delete(sparePartId).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.closeDeleteDialog();
+        void this.router.navigateByUrl('/tecnico/refacciones');
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.closeDeleteDialog();
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });

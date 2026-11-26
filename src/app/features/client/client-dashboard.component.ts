@@ -4,13 +4,13 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ClientRepairSummaryDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
-import { FALLBACK_IMAGE_DATA_URI } from '../../shared/components/image-uploader-cropper.component';
+import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-client-dashboard',
-  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, DatePipe],
+  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, ImageCarouselComponent, DatePipe],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="client-welcome">
@@ -90,15 +90,11 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             @for (item of visibleRequests(); track item.id) {
               <article class="item-card">
                 <div style="display: grid; gap: 0.6rem">
-                  @if (item.thumbnailUrl) {
-                    <img
-                      class="item-card-thumb"
-                      [src]="item.thumbnailUrl"
-                      [alt]="'Foto de ' + item.applianceName"
-                      loading="lazy"
-                      (error)="onImgError($event)"
-                    />
-                  }
+                  <app-image-carousel
+                    [images]="item.imageUrls"
+                    [fallbackThumbnail]="item.thumbnailUrl"
+                    [altPrefix]="'Foto de ' + item.applianceName"
+                  />
 
                   <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem"
@@ -192,12 +188,5 @@ export class ClientDashboardComponent implements OnInit {
         this.errorMessage.set(this.auth.extractErrorMessage(err));
       },
     });
-  }
-
-  protected onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (img.src !== FALLBACK_IMAGE_DATA_URI) {
-      img.src = FALLBACK_IMAGE_DATA_URI;
-    }
   }
 }
