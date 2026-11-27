@@ -6,6 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { SparePartSummaryDto } from '../../core/models/operations.models';
 import { SparePartsService } from '../../core/services/spare-parts.service';
 import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
+import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
@@ -17,6 +18,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
     FormsModule,
     StatusBadgeComponent,
     ImageCarouselComponent,
+    PaginationComponent,
     CurrencyPipe,
   ],
   template: `
@@ -190,6 +192,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             </article>
           }
         </section>
+
+        <app-pagination
+          [page]="page()"
+          [pageSize]="pageSize"
+          [totalCount]="totalCount()"
+          [totalPages]="totalPages()"
+          (pageChange)="onPageChange($event)"
+        />
       }
     </app-shell>
   `,
@@ -198,10 +208,14 @@ export class SparePartsBoardComponent implements OnInit {
   private readonly spareParts = inject(SparePartsService);
   private readonly auth = inject(AuthService);
 
+  protected readonly pageSize = 30;
   protected readonly tab = signal<'board' | 'mine'>('board');
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly items = signal<SparePartSummaryDto[]>([]);
+  protected readonly page = signal(1);
+  protected readonly totalCount = signal(0);
+  protected readonly totalPages = signal(1);
 
   protected search = '';
   protected modality = '';
@@ -210,15 +224,19 @@ export class SparePartsBoardComponent implements OnInit {
   protected maxPrice: number | null = null;
 
   ngOnInit(): void {
-    this.loadCurrentTab();
+    this.loadCurrentTab(1);
   }
 
   protected switchTab(next: 'board' | 'mine'): void {
     this.tab.set(next);
-    this.loadCurrentTab();
+    this.loadCurrentTab(1);
   }
 
-  protected loadCurrentTab(): void {
+  protected onPageChange(nextPage: number): void {
+    this.loadCurrentTab(nextPage);
+  }
+
+  protected loadCurrentTab(targetPage = 1): void {
     this.loading.set(true);
     this.errorMessage.set(null);
 
@@ -230,12 +248,17 @@ export class SparePartsBoardComponent implements OnInit {
             condition: this.condition,
             minPrice: this.minPrice,
             maxPrice: this.maxPrice,
+            page: targetPage,
+            pageSize: this.pageSize,
           })
-        : this.spareParts.getMine();
+        : this.spareParts.getMine({ page: targetPage, pageSize: this.pageSize });
 
     request$.subscribe({
-      next: (list) => {
-        this.items.set(list);
+      next: (res) => {
+        this.items.set(res.items);
+        this.page.set(res.page);
+        this.totalCount.set(res.totalCount);
+        this.totalPages.set(res.totalPages);
         this.loading.set(false);
       },
       error: (err: unknown) => {

@@ -1,8 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { BreadcrumbService } from '../../core/ui/breadcrumb.service';
 import { LoadingStateService } from '../../core/ui/loading-state.service';
 import { RegisterRoleComponent } from '../../features/auth/register-role/register-role.component';
+import { BreadcrumbsComponent } from './breadcrumbs.component';
 import { ImageCarouselComponent } from './image-carousel.component';
+import { PaginationComponent } from './pagination.component';
 import { ScheduleAgendaPickerComponent } from './schedule-agenda-picker.component';
 import { UserAvatarComponent } from './user-avatar.component';
 
@@ -83,5 +86,39 @@ describe('UX Enhancements Components', () => {
     expect(svc.isLoading()).toBe(true);
     svc.endHttpRequest();
     expect(svc.isLoading()).toBe(false);
+  });
+
+  it('renders PaginationComponent summary, controls and emits selected page', () => {
+    const fixture = TestBed.createComponent(PaginationComponent);
+    const emitted: number[] = [];
+    fixture.componentInstance.pageChange.subscribe((p) => emitted.push(p));
+    fixture.componentRef.setInput('page', 1);
+    fixture.componentRef.setInput('pageSize', 12);
+    fixture.componentRef.setInput('totalCount', 28);
+    fixture.componentRef.setInput('totalPages', 3);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Mostrando 1–12 de 28');
+    const page2Btn = el.querySelector<HTMLButtonElement>('button[aria-label="Página 2"]');
+    page2Btn?.click();
+    expect(emitted).toEqual([2]);
+  });
+
+  it('renders BreadcrumbsComponent trail with current page indicator', () => {
+    TestBed.configureTestingModule({
+      imports: [BreadcrumbsComponent],
+      providers: [provideRouter([])],
+    });
+    const svc = TestBed.inject(BreadcrumbService);
+    const fixture = TestBed.createComponent(BreadcrumbsComponent);
+    fixture.detectChanges();
+
+    expect(svc.items().length).toBeGreaterThan(0);
+    const nav = (fixture.nativeElement as HTMLElement).querySelector(
+      'nav[aria-label="Ruta de navegación"]',
+    );
+    expect(nav).not.toBeNull();
+    expect(nav?.querySelector('[aria-current="page"]')).not.toBeNull();
   });
 });

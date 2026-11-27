@@ -1,7 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, Subscription, catchError, of, switchMap, tap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { PostalCodeLookupDto } from '../../core/models/operations.models';
 import { PostalCodeService } from '../../core/services/postal-code.service';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageUploaderCropperComponent } from '../../shared/components/image-uploader-cropper.component';
@@ -324,7 +326,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
     </app-shell>
   `,
 })
-export class RepairCreateComponent {
+export class RepairCreateComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly postalCodes = inject(PostalCodeService);
   private readonly repairs = inject(RepairsService);
@@ -339,6 +341,10 @@ export class RepairCreateComponent {
   protected readonly neighborhoodOptions = signal<string[]>([]);
   protected readonly manualNeighborhood = signal(false);
   protected readonly imageUrls = signal<string[]>([]);
+
+  private readonly cpLookupTrigger$ = new Subject<string>();
+  private readonly cpLookupSub: Subscription;
+  private lastResolvedCp: string | null = null;
 
   protected readonly form = this.fb.nonNullable.group({
     applianceName: ['', [Validators.required, Validators.maxLength(120)]],
@@ -360,59 +366,110 @@ export class RepairCreateComponent {
     addressReference: ['', [Validators.maxLength(250)]],
   });
 
+  constructor() {
+    this.cpLookupSub = this.cpLookupTrigger$
+      .pipe(
+        tap(() => {
+          this.lookingUpCp.set(true);
+          this.cpMessage.set('Consultando catálogo SEPOMEX...');
+        }),
+        switchMap((cp) =>
+          this.postalCodes.lookup(cp).pipe(catchError(() => of<{ error: true }>({ error: true }))),
+        ),
+      )
+      .subscribe((result) => {
+        this.lookingUpCp.set(false);
+        if ('error' in result) {
+          this.lastResolvedCp = null;
+          this.neighborhoodOptions.set([]);
+          this.manualNeighborhood.set(true);
+          this.cpMessage.set(
+            'No fue posible consultar el catálogo SEPOMEX; puedes reintentar con "Buscar CP" o completar manualmente.',
+          );
+          return;
+        }
+
+        this.applyPostalCodeResult(result);
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.cpLookupSub.unsubscribe();
+    this.cpLookupTrigger$.complete();
+  }
+
   protected isFieldInvalid(field: keyof typeof this.form.controls): boolean {
     const control = this.form.controls[field];
     return control.invalid && (control.touched || control.dirty);
   }
 
   protected onPostalCodeInput(): void {
-    const cp = this.form.controls.postalCode.value.trim();
-    if (/^\d{5}$/.test(cp)) {
-      this.lookupPostalCode();
+    const raw = this.form.controls.postalCode.value;
+    const digitsOnly = raw.replace(/\D+/g, '').slice(0, 5);
+    if (digitsOnly !== raw) {
+      this.form.controls.postalCode.setValue(digitsOnly, { emitEvent: false });
+    }
+
+    if (digitsOnly.length < 5) {
+      if (this.lastResolvedCp !== null || this.neighborhoodOptions().length > 0) {
+        this.lastResolvedCp = null;
+        this.neighborhoodOptions.set([]);
+        this.manualNeighborhood.set(false);
+        this.cpMessage.set(null);
+        this.form.patchValue({ state: '', municipality: '', city: '', neighborhood: '' });
+      }
+      return;
+    }
+
+    if (digitsOnly !== this.lastResolvedCp) {
+      this.cpLookupTrigger$.next(digitsOnly);
     }
   }
 
   protected lookupPostalCode(): void {
+    if (this.lookingUpCp()) {
+      return;
+    }
+
     const cp = this.form.controls.postalCode.value.trim();
     if (!/^\d{5}$/.test(cp)) {
       this.cpMessage.set('Escribe exactamente 5 dígitos para buscar en SEPOMEX.');
       return;
     }
 
-    this.lookingUpCp.set(true);
-    this.cpMessage.set('Consultando catálogo SEPOMEX...');
-    this.postalCodes.lookup(cp).subscribe({
-      next: (res) => {
-        this.lookingUpCp.set(false);
-        if (res.found) {
-          this.neighborhoodOptions.set(res.neighborhoods);
-          this.manualNeighborhood.set(false);
-          this.form.patchValue({
-            state: res.state ?? '',
-            municipality: res.municipality ?? '',
-            city: res.city ?? '',
-            neighborhood: res.neighborhoods.length === 1 ? res.neighborhoods[0] : '',
-          });
-          this.cpMessage.set(
-            `CP encontrado (${res.neighborhoods.length} colonia(s) disponibles). Confirma tu colonia.`,
-          );
-        } else {
-          this.neighborhoodOptions.set([]);
-          this.manualNeighborhood.set(true);
-          this.cpMessage.set(
-            'El código postal no apareció en el catálogo; puedes completar los datos manualmente.',
-          );
-        }
-      },
-      error: () => {
-        this.lookingUpCp.set(false);
-        this.neighborhoodOptions.set([]);
-        this.manualNeighborhood.set(true);
-        this.cpMessage.set(
-          'No fue posible consultar el catálogo; completa la ubicación manualmente.',
-        );
-      },
-    });
+    this.cpLookupTrigger$.next(cp);
+  }
+
+  private applyPostalCodeResult(res: PostalCodeLookupDto): void {
+    if (res.found) {
+      this.lastResolvedCp = res.postalCode;
+      this.neighborhoodOptions.set(res.neighborhoods);
+      this.manualNeighborhood.set(false);
+
+      const currentNeighborhood = this.form.controls.neighborhood.value.trim();
+      const keptNeighborhood = res.neighborhoods.find(
+        (n) => n.toLowerCase() === currentNeighborhood.toLowerCase(),
+      );
+      const nextNeighborhood =
+        keptNeighborhood ?? (res.neighborhoods.length === 1 ? res.neighborhoods[0] : '');
+
+      this.form.patchValue({
+        state: res.state ?? '',
+        municipality: res.municipality ?? '',
+        city: res.city ?? '',
+        neighborhood: nextNeighborhood,
+      });
+      this.cpMessage.set(
+        `CP encontrado (${res.neighborhoods.length} colonia(s) disponibles). Estado y municipio completados automáticamente.`,
+      );
+    } else {
+      this.lastResolvedCp = null;
+      this.neighborhoodOptions.set([]);
+      this.manualNeighborhood.set(true);
+      this.cpMessage.set(
+        'El código postal no apareció en el catálogo; puedes completar los datos manualmente.',
+      );
+    }
   }
 
   protected onSubmit(): void {
