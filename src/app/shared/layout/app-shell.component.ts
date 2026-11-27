@@ -8,11 +8,12 @@ import { ChatService } from '../../core/services/chat.service';
 import { NotificationsService } from '../../core/services/notifications.service';
 import { PwaInstallService } from '../../core/services/pwa-install.service';
 import { RealtimeService } from '../../core/services/realtime.service';
+import { BreadcrumbsComponent } from '../components/breadcrumbs.component';
 import { UserAvatarComponent } from '../components/user-avatar.component';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, DatePipe, UserAvatarComponent],
+  imports: [RouterLink, RouterLinkActive, DatePipe, UserAvatarComponent, BreadcrumbsComponent],
   template: `
     <div class="dashboard-shell">
       <header class="topbar">
@@ -194,6 +195,7 @@ import { UserAvatarComponent } from '../components/user-avatar.component';
       }
 
       <main class="dashboard-main view-transition">
+        <app-breadcrumbs />
         <ng-content />
       </main>
     </div>

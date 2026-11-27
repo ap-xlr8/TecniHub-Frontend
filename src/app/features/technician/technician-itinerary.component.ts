@@ -1,16 +1,24 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ItineraryItemDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
+import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-technician-itinerary',
-  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, ImageCarouselComponent, DatePipe],
+  imports: [
+    AppShellComponent,
+    RouterLink,
+    StatusBadgeComponent,
+    ImageCarouselComponent,
+    PaginationComponent,
+    DatePipe,
+  ],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="itinerary-heading">
@@ -32,7 +40,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
       @if (loading()) {
         <section class="panel-card"><p class="muted-value">Cargando itinerario...</p></section>
-      } @else if (items().length === 0) {
+      } @else if (activeCount() + completedCount() === 0) {
         <section class="empty-state">
           <h2>Aún no tienes servicios en tu itinerario</h2>
           <p>
@@ -47,27 +55,27 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             type="button"
             class="tab-btn"
             [class.tab-btn--active]="tab() === 'active'"
-            (click)="tab.set('active')"
+            (click)="switchTab('active')"
           >
-            Pendientes y activos ({{ activeItems().length }})
+            Pendientes y activos ({{ activeCount() }})
           </button>
           <button
             type="button"
             class="tab-btn"
             [class.tab-btn--active]="tab() === 'completed'"
-            (click)="tab.set('completed')"
+            (click)="switchTab('completed')"
           >
-            Completados ({{ completedItems().length }})
+            Completados ({{ completedCount() }})
           </button>
         </div>
 
-        @if (visibleItems().length === 0) {
+        @if (items().length === 0) {
           <section class="empty-state">
             <h2>No hay servicios en esta sección</h2>
           </section>
         } @else {
           <section class="card-list" aria-label="Servicios en itinerario">
-            @for (item of visibleItems(); track item.id) {
+            @for (item of items(); track item.id) {
               <article class="item-card">
                 <div style="display: grid; gap: 0.55rem">
                   <app-image-carousel
@@ -133,6 +141,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               </article>
             }
           </section>
+
+          <app-pagination
+            [page]="page()"
+            [pageSize]="pageSize"
+            [totalCount]="totalCount()"
+            [totalPages]="totalPages()"
+            (pageChange)="onPageChange($event)"
+          />
         }
       }
     </app-shell>
@@ -142,31 +158,52 @@ export class TechnicianItineraryComponent implements OnInit {
   private readonly repairs = inject(RepairsService);
   private readonly auth = inject(AuthService);
 
+  protected readonly pageSize = 12;
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly items = signal<ItineraryItemDto[]>([]);
   protected readonly tab = signal<'active' | 'completed'>('active');
-
-  protected readonly activeItems = computed(() =>
-    this.items().filter((i) => i.status !== 'Completed' && i.status !== 'Cancelled'),
-  );
-  protected readonly completedItems = computed(() =>
-    this.items().filter((i) => i.status === 'Completed' || i.status === 'Cancelled'),
-  );
-  protected readonly visibleItems = computed(() =>
-    this.tab() === 'active' ? this.activeItems() : this.completedItems(),
-  );
+  protected readonly page = signal(1);
+  protected readonly totalCount = signal(0);
+  protected readonly totalPages = signal(1);
+  protected readonly activeCount = signal(0);
+  protected readonly completedCount = signal(0);
 
   ngOnInit(): void {
-    this.repairs.getItinerary().subscribe({
-      next: (list) => {
-        this.items.set(list);
-        this.loading.set(false);
-      },
-      error: (err: unknown) => {
-        this.loading.set(false);
-        this.errorMessage.set(this.auth.extractErrorMessage(err));
-      },
-    });
+    this.loadItinerary(1);
+  }
+
+  protected switchTab(next: 'active' | 'completed'): void {
+    if (this.tab() === next) {
+      return;
+    }
+    this.tab.set(next);
+    this.loadItinerary(1);
+  }
+
+  protected onPageChange(nextPage: number): void {
+    this.loadItinerary(nextPage);
+  }
+
+  private loadItinerary(targetPage: number): void {
+    this.loading.set(true);
+    this.errorMessage.set(null);
+    this.repairs
+      .getItinerary({ scope: this.tab(), page: targetPage, pageSize: this.pageSize })
+      .subscribe({
+        next: (res) => {
+          this.items.set(res.items);
+          this.page.set(res.page);
+          this.totalCount.set(res.totalCount);
+          this.totalPages.set(res.totalPages);
+          this.activeCount.set(res.activeCount ?? res.totalCount);
+          this.completedCount.set(res.secondaryCount ?? 0);
+          this.loading.set(false);
+        },
+        error: (err: unknown) => {
+          this.loading.set(false);
+          this.errorMessage.set(this.auth.extractErrorMessage(err));
+        },
+      });
   }
 }

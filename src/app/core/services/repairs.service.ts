@@ -7,6 +7,7 @@ import {
   CreateRepairRequestPayload,
   ItineraryItemDto,
   OpenRepairBoardItemDto,
+  PagedResult,
   RepairDetailDto,
   ScheduleRepairResponse,
 } from '../models/operations.models';
@@ -20,8 +21,18 @@ export class RepairsService {
     return this.http.post<RepairDetailDto>(this.apiBase, payload);
   }
 
-  getMine(): Observable<ClientRepairSummaryDto[]> {
-    return this.http.get<ClientRepairSummaryDto[]>(`${this.apiBase}/mine`);
+  getMine(options?: {
+    scope?: 'active' | 'history';
+    page?: number;
+    pageSize?: number;
+  }): Observable<PagedResult<ClientRepairSummaryDto>> {
+    let params = new HttpParams()
+      .set('page', String(options?.page ?? 1))
+      .set('pageSize', String(options?.pageSize ?? 12));
+    if (options?.scope) {
+      params = params.set('scope', options.scope);
+    }
+    return this.http.get<PagedResult<ClientRepairSummaryDto>>(`${this.apiBase}/mine`, { params });
   }
 
   getOpenBoard(filters?: {
@@ -29,8 +40,12 @@ export class RepairsService {
     state?: string;
     municipality?: string;
     postalCode?: string;
-  }): Observable<OpenRepairBoardItemDto[]> {
-    let params = new HttpParams();
+    page?: number;
+    pageSize?: number;
+  }): Observable<PagedResult<OpenRepairBoardItemDto>> {
+    let params = new HttpParams()
+      .set('page', String(filters?.page ?? 1))
+      .set('pageSize', String(filters?.pageSize ?? 30));
     if (filters?.search?.trim()) {
       params = params.set('search', filters.search.trim());
     }
@@ -43,11 +58,21 @@ export class RepairsService {
     if (filters?.postalCode?.trim()) {
       params = params.set('postalCode', filters.postalCode.trim());
     }
-    return this.http.get<OpenRepairBoardItemDto[]>(`${this.apiBase}/board`, { params });
+    return this.http.get<PagedResult<OpenRepairBoardItemDto>>(`${this.apiBase}/board`, { params });
   }
 
-  getItinerary(): Observable<ItineraryItemDto[]> {
-    return this.http.get<ItineraryItemDto[]>(`${this.apiBase}/itinerary`);
+  getItinerary(options?: {
+    scope?: 'active' | 'completed';
+    page?: number;
+    pageSize?: number;
+  }): Observable<PagedResult<ItineraryItemDto>> {
+    let params = new HttpParams()
+      .set('page', String(options?.page ?? 1))
+      .set('pageSize', String(options?.pageSize ?? 12));
+    if (options?.scope) {
+      params = params.set('scope', options.scope);
+    }
+    return this.http.get<PagedResult<ItineraryItemDto>>(`${this.apiBase}/itinerary`, { params });
   }
 
   getDetail(id: string): Observable<RepairDetailDto> {

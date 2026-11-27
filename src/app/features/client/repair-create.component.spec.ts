@@ -80,4 +80,59 @@ describe('RepairCreateComponent', () => {
 
     expect(component.manualNeighborhood()).toBe(true);
   });
+
+  it('auto-fills state and municipality on 5-digit input and clears stale values when digits are deleted', () => {
+    const fixture = TestBed.createComponent(RepairCreateComponent);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance as unknown as {
+      form: {
+        controls: {
+          postalCode: { setValue(v: string): void };
+          state: { value: string };
+          municipality: { value: string };
+          neighborhood: { setValue(v: string): void; value: string };
+        };
+      };
+      onPostalCodeInput(): void;
+      lookupPostalCode(): void;
+    };
+
+    component.form.controls.postalCode.setValue('42855');
+    component.onPostalCodeInput();
+
+    const req = httpMock.expectOne('/api/postal-codes/42855');
+    req.flush({
+      postalCode: '42855',
+      found: true,
+      state: 'Hidalgo',
+      municipality: 'Tepeji del Río de Ocampo',
+      city: 'Tepeji del Río de Ocampo',
+      neighborhoods: ['Atengo', 'Centro'],
+    });
+
+    expect(component.form.controls.state.value).toBe('Hidalgo');
+    expect(component.form.controls.municipality.value).toBe('Tepeji del Río de Ocampo');
+
+    // Keep selected neighborhood if user clicks Buscar CP again
+    component.form.controls.neighborhood.setValue('Atengo');
+    component.lookupPostalCode();
+    const req2 = httpMock.expectOne('/api/postal-codes/42855');
+    req2.flush({
+      postalCode: '42855',
+      found: true,
+      state: 'Hidalgo',
+      municipality: 'Tepeji del Río de Ocampo',
+      city: 'Tepeji del Río de Ocampo',
+      neighborhoods: ['Atengo', 'Centro'],
+    });
+    expect(component.form.controls.neighborhood.value).toBe('Atengo');
+
+    // Deleting a digit clears stale state/municipality/neighborhood
+    component.form.controls.postalCode.setValue('4285');
+    component.onPostalCodeInput();
+    expect(component.form.controls.state.value).toBe('');
+    expect(component.form.controls.municipality.value).toBe('');
+    expect(component.form.controls.neighborhood.value).toBe('');
+  });
 });

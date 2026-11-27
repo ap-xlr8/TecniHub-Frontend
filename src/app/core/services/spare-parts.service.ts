@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  PagedResult,
   SparePartDetailDto,
   SparePartSummaryDto,
   UpsertSparePartPayload,
@@ -20,8 +21,12 @@ export class SparePartsService {
     condition?: string;
     minPrice?: number | null;
     maxPrice?: number | null;
-  }): Observable<SparePartSummaryDto[]> {
-    let params = new HttpParams();
+    page?: number;
+    pageSize?: number;
+  }): Observable<PagedResult<SparePartSummaryDto>> {
+    let params = new HttpParams()
+      .set('page', String(filters?.page ?? 1))
+      .set('pageSize', String(filters?.pageSize ?? 30));
     if (filters?.search?.trim()) {
       params = params.set('search', filters.search.trim());
     }
@@ -40,11 +45,17 @@ export class SparePartsService {
     if (filters?.maxPrice != null && !Number.isNaN(filters.maxPrice) && filters.maxPrice > 0) {
       params = params.set('maxPrice', String(filters.maxPrice));
     }
-    return this.http.get<SparePartSummaryDto[]>(this.apiBase, { params });
+    return this.http.get<PagedResult<SparePartSummaryDto>>(this.apiBase, { params });
   }
 
-  getMine(): Observable<SparePartSummaryDto[]> {
-    return this.http.get<SparePartSummaryDto[]>(`${this.apiBase}/mine`);
+  getMine(options?: {
+    page?: number;
+    pageSize?: number;
+  }): Observable<PagedResult<SparePartSummaryDto>> {
+    const params = new HttpParams()
+      .set('page', String(options?.page ?? 1))
+      .set('pageSize', String(options?.pageSize ?? 30));
+    return this.http.get<PagedResult<SparePartSummaryDto>>(`${this.apiBase}/mine`, { params });
   }
 
   getDetail(id: string): Observable<SparePartDetailDto> {

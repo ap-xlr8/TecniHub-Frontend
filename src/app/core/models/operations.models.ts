@@ -1,3 +1,14 @@
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  activeCount?: number | null;
+  secondaryCount?: number | null;
+  pendingClosureCount?: number | null;
+}
+
 export interface UpdateOwnProfilePayload {
   firstName: string;
   lastName: string;

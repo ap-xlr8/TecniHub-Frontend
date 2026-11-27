@@ -38,7 +38,7 @@ interface TimelineStep {
               <span class="timeline-dot" aria-hidden="true">{{
                 step.done ? '✓' : $index + 1
               }}</span>
-              <div>
+              <div class="timeline-step-body">
                 <strong>{{ step.label }}</strong>
                 @if (step.timestamp) {
                   <div class="field-hint">{{ step.timestamp | date: 'dd/MM/yyyy HH:mm' }}</div>

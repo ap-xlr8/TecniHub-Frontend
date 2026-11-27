@@ -1791,16 +1791,126 @@ dialog::backdrop {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  row-gap: 0.9rem;
+  column-gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .timeline-step {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.55rem;
+  min-block-size: 2.65rem;
   font-size: 0.84rem;
   opacity: 0.55;
+}
+
+.timeline-step-body {
+  min-inline-size: 0;
+}
+
+.timeline-step-body strong {
+  display: block;
+  line-height: 1.5rem;
+}
+
+.timeline-step-body .field-hint {
+  margin-top: 0.1rem;
+  line-height: 1.25;
+}
+
+@media (max-width: 767px) {
+  .timeline-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 340px) {
+  .timeline-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  margin: 0 0 0.9rem;
+  overflow-x: auto;
+}
+
+.breadcrumbs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  color: var(--th-text-muted);
+}
+
+.breadcrumbs-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+
+.breadcrumbs-link {
+  color: var(--th-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.breadcrumbs-link:hover,
+.breadcrumbs-link:focus-visible {
+  text-decoration: underline;
+}
+
+.breadcrumbs-sep {
+  color: var(--th-text-muted);
+  user-select: none;
+}
+
+.breadcrumbs-current {
+  color: var(--th-text);
+  font-weight: 600;
+}
+
+/* Pagination */
+.pagination-bar {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-sm);
+  background: var(--th-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pagination-summary {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--th-text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  min-inline-size: 2.2rem;
+}
+
+.pagination-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--th-text-muted);
 }
 
 .timeline-step--done,

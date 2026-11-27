@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { OpenRepairBoardItemDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
+import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
@@ -16,6 +17,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
     FormsModule,
     StatusBadgeComponent,
     ImageCarouselComponent,
+    PaginationComponent,
   ],
   template: `
     <app-shell>
@@ -142,6 +144,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             </article>
           }
         </section>
+
+        <app-pagination
+          [page]="page()"
+          [pageSize]="pageSize"
+          [totalCount]="totalCount()"
+          [totalPages]="totalPages()"
+          (pageChange)="onPageChange($event)"
+        />
       }
     </app-shell>
   `,
@@ -150,15 +160,19 @@ export class TechnicianDashboardComponent implements OnInit {
   private readonly repairs = inject(RepairsService);
   private readonly auth = inject(AuthService);
 
+  protected readonly pageSize = 30;
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly items = signal<OpenRepairBoardItemDto[]>([]);
+  protected readonly page = signal(1);
+  protected readonly totalCount = signal(0);
+  protected readonly totalPages = signal(1);
   protected searchTerm = '';
   protected municipalityFilter = '';
   protected postalCodeFilter = '';
 
   ngOnInit(): void {
-    this.loadBoard();
+    this.loadBoard(1);
   }
 
   protected hasFilters(): boolean {
@@ -167,7 +181,11 @@ export class TechnicianDashboardComponent implements OnInit {
     );
   }
 
-  protected loadBoard(): void {
+  protected onPageChange(nextPage: number): void {
+    this.loadBoard(nextPage);
+  }
+
+  protected loadBoard(targetPage = 1): void {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.repairs
@@ -175,10 +193,15 @@ export class TechnicianDashboardComponent implements OnInit {
         search: this.searchTerm,
         municipality: this.municipalityFilter,
         postalCode: this.postalCodeFilter,
+        page: targetPage,
+        pageSize: this.pageSize,
       })
       .subscribe({
-        next: (list) => {
-          this.items.set(list);
+        next: (res) => {
+          this.items.set(res.items);
+          this.page.set(res.page);
+          this.totalCount.set(res.totalCount);
+          this.totalPages.set(res.totalPages);
           this.loading.set(false);
         },
         error: (err: unknown) => {
@@ -192,6 +215,6 @@ export class TechnicianDashboardComponent implements OnInit {
     this.searchTerm = '';
     this.municipalityFilter = '';
     this.postalCodeFilter = '';
-    this.loadBoard();
+    this.loadBoard(1);
   }
 }

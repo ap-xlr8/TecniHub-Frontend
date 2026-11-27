@@ -1,16 +1,24 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { ClientRepairSummaryDto } from '../../core/models/operations.models';
 import { RepairsService } from '../../core/services/repairs.service';
 import { ImageCarouselComponent } from '../../shared/components/image-carousel.component';
+import { PaginationComponent } from '../../shared/components/pagination.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { AppShellComponent } from '../../shared/layout/app-shell.component';
 
 @Component({
   selector: 'app-client-dashboard',
-  imports: [AppShellComponent, RouterLink, StatusBadgeComponent, ImageCarouselComponent, DatePipe],
+  imports: [
+    AppShellComponent,
+    RouterLink,
+    StatusBadgeComponent,
+    ImageCarouselComponent,
+    PaginationComponent,
+    DatePipe,
+  ],
   template: `
     <app-shell>
       <section class="panel-card" aria-labelledby="client-welcome">
@@ -44,7 +52,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
         <section class="panel-card">
           <p class="muted-value" style="margin: 0">Cargando tus solicitudes...</p>
         </section>
-      } @else if (requests().length === 0) {
+      } @else if (activeCount() + historyCount() === 0) {
         <section class="empty-state" aria-label="Sin solicitudes">
           <h2>Aún no tienes solicitudes</h2>
           <p>
@@ -61,21 +69,21 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
             type="button"
             class="tab-btn"
             [class.tab-btn--active]="tab() === 'active'"
-            (click)="tab.set('active')"
+            (click)="switchTab('active')"
           >
-            Activas ({{ activeRequests().length }})
+            Activas ({{ activeCount() }})
           </button>
           <button
             type="button"
             class="tab-btn"
             [class.tab-btn--active]="tab() === 'history'"
-            (click)="tab.set('history')"
+            (click)="switchTab('history')"
           >
-            Historial ({{ historyRequests().length }})
+            Historial ({{ historyCount() }})
           </button>
         </div>
 
-        @if (visibleRequests().length === 0) {
+        @if (requests().length === 0) {
           <section class="empty-state">
             <h2>
               {{
@@ -87,7 +95,7 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
           </section>
         } @else {
           <section class="card-list" aria-label="Listado de solicitudes">
-            @for (item of visibleRequests(); track item.id) {
+            @for (item of requests(); track item.id) {
               <article class="item-card">
                 <div style="display: grid; gap: 0.6rem">
                   <app-image-carousel
@@ -150,6 +158,14 @@ import { AppShellComponent } from '../../shared/layout/app-shell.component';
               </article>
             }
           </section>
+
+          <app-pagination
+            [page]="page()"
+            [pageSize]="pageSize"
+            [totalCount]="totalCount()"
+            [totalPages]="totalPages()"
+            (pageChange)="onPageChange($event)"
+          />
         }
       }
     </app-shell>
@@ -159,34 +175,54 @@ export class ClientDashboardComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly repairsService = inject(RepairsService);
 
+  protected readonly pageSize = 12;
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly requests = signal<ClientRepairSummaryDto[]>([]);
   protected readonly tab = signal<'active' | 'history'>('active');
-
-  protected readonly activeRequests = computed(() =>
-    this.requests().filter((r) => r.status !== 'Completed' && r.status !== 'Cancelled'),
-  );
-  protected readonly historyRequests = computed(() =>
-    this.requests().filter((r) => r.status === 'Completed' || r.status === 'Cancelled'),
-  );
-  protected readonly visibleRequests = computed(() =>
-    this.tab() === 'active' ? this.activeRequests() : this.historyRequests(),
-  );
-  protected readonly closurePendingCount = computed(
-    () => this.requests().filter((r) => r.status === 'ClosureRequested').length,
-  );
+  protected readonly page = signal(1);
+  protected readonly totalCount = signal(0);
+  protected readonly totalPages = signal(1);
+  protected readonly activeCount = signal(0);
+  protected readonly historyCount = signal(0);
+  protected readonly closurePendingCount = signal(0);
 
   ngOnInit(): void {
-    this.repairsService.getMine().subscribe({
-      next: (list) => {
-        this.requests.set(list);
-        this.loading.set(false);
-      },
-      error: (err: unknown) => {
-        this.loading.set(false);
-        this.errorMessage.set(this.auth.extractErrorMessage(err));
-      },
-    });
+    this.loadRequests(1);
+  }
+
+  protected switchTab(next: 'active' | 'history'): void {
+    if (this.tab() === next) {
+      return;
+    }
+    this.tab.set(next);
+    this.loadRequests(1);
+  }
+
+  protected onPageChange(nextPage: number): void {
+    this.loadRequests(nextPage);
+  }
+
+  private loadRequests(targetPage: number): void {
+    this.loading.set(true);
+    this.errorMessage.set(null);
+    this.repairsService
+      .getMine({ scope: this.tab(), page: targetPage, pageSize: this.pageSize })
+      .subscribe({
+        next: (res) => {
+          this.requests.set(res.items);
+          this.page.set(res.page);
+          this.totalCount.set(res.totalCount);
+          this.totalPages.set(res.totalPages);
+          this.activeCount.set(res.activeCount ?? res.totalCount);
+          this.historyCount.set(res.secondaryCount ?? 0);
+          this.closurePendingCount.set(res.pendingClosureCount ?? 0);
+          this.loading.set(false);
+        },
+        error: (err: unknown) => {
+          this.loading.set(false);
+          this.errorMessage.set(this.auth.extractErrorMessage(err));
+        },
+      });
   }
 }
